@@ -1,0 +1,1666 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Marine-X — ASV + 3 AUV autonomous exploration prototype</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#e9efee;--panel:#ffffff;--panel2:#f3f7f6;--ink:#0a1c2b;--muted:#566a78;--line:#d3dedc;
+  --accent:#0d7f86;--accent-ink:#ffffff;--ok:#0f7a52;--warn:#b2620a;--bad:#c0262d;--sim:#6a3fc8;
+  --chip:#e3ecea;--grid:rgba(10,28,43,.09);--vp:#061827;
+  --c-asv:#1d9bd6;--c-auv1:#e8932a;--c-auv2:#169b6b;--c-auv3:#9154e0;
+  color-scheme:light;box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#041019;--panel:#08192a;--panel2:#0c2134;--ink:#dfeaf2;--muted:#8aa1b3;--line:#173246;
+  --accent:#2cc4bd;--accent-ink:#03141c;--ok:#3fd09a;--warn:#f2b247;--bad:#ff6b6b;--sim:#b195ff;
+  --chip:#11283b;--grid:rgba(223,234,242,.08);--vp:#03111d;
+  --c-asv:#49b9f0;--c-auv1:#f5a742;--c-auv2:#34c98e;--c-auv3:#ad7bff;color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#041019;--panel:#08192a;--panel2:#0c2134;--ink:#dfeaf2;--muted:#8aa1b3;--line:#173246;
+  --accent:#2cc4bd;--accent-ink:#03141c;--ok:#3fd09a;--warn:#f2b247;--bad:#ff6b6b;--sim:#b195ff;
+  --chip:#11283b;--grid:rgba(223,234,242,.08);--vp:#03111d;
+  --c-asv:#49b9f0;--c-auv1:#f5a742;--c-auv2:#34c98e;--c-auv3:#ad7bff;color-scheme:dark}
+html{scroll-padding-top:env(safe-area-inset-top,0px);height:100%}
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 Barlow,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;font-variant-numeric:tabular-nums;-webkit-text-size-adjust:100%}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:30;background:var(--panel)}
+h1,h2,h3,h4{font-family:"Barlow Condensed",Barlow,"Arial Narrow",sans-serif;font-weight:600;margin:0;letter-spacing:.01em}
+button,select,input{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+small{color:var(--muted)}
+.wrap{max-width:1560px;margin:0 auto;padding:0 16px}
+
+/* header */
+.top{background:var(--panel);border-bottom:1px solid var(--line)}
+.top .wrap{display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding-top:10px;padding-bottom:10px}
+.brand{display:flex;align-items:center;gap:12px;min-width:0;flex:1 1 380px}
+.brand svg{flex:none}
+.brand h1{font-size:24px;line-height:1.05}
+.brand p{margin:2px 0 0;color:var(--muted);font-size:13.5px}
+.ctrls{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.clock{font-family:"Barlow Condensed",sans-serif;font-size:20px;font-weight:600;padding:2px 10px;border-radius:6px;background:var(--chip);min-width:118px;text-align:center}
+.btn{border:1px solid var(--line);background:var(--panel2);border-radius:7px;padding:7px 12px;cursor:pointer;line-height:1.1;font-weight:500;white-space:nowrap}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.btn.sm{padding:5px 9px;font-size:13.5px}
+.btn.on{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.btn[disabled]{opacity:.55;cursor:progress}
+select{border:1px solid var(--line);background:var(--panel2);border-radius:7px;padding:6px 8px}
+.notice{background:color-mix(in srgb,var(--sim) 10%,var(--panel));border-bottom:1px solid var(--line);font-size:13.5px}
+.notice .wrap{padding-top:7px;padding-bottom:7px;display:flex;gap:10px;align-items:baseline}
+.tagsim{display:inline-block;background:var(--sim);color:#fff;border-radius:4px;padding:1px 7px;font-size:12px;font-weight:600;flex:none}
+.tagprop{display:inline-block;background:var(--warn);color:#fff;border-radius:4px;padding:1px 7px;font-size:12px;font-weight:600}
+
+/* tabs */
+.tabs{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--panel);border-bottom:1px solid var(--line)}
+.tabs .wrap{display:flex;gap:2px;overflow-x:auto;scrollbar-width:thin}
+.tabs a{display:block;padding:11px 14px 9px;color:var(--muted);text-decoration:none;font-weight:600;border-bottom:3px solid transparent;white-space:nowrap;font-size:14.5px}
+.tabs a:hover{color:var(--ink)}
+.tabs a.act{color:var(--ink);border-bottom-color:var(--accent)}
+main{padding:16px 0 40px}
+.view{display:none}
+.view.act{display:block}
+.vhead{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+.vhead h2{font-size:26px}
+.vhead p{margin:2px 0 0;color:var(--muted);max-width:76ch}
+
+/* layout */
+.simgrid{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:14px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px}
+.panel h3{font-size:18px;margin-bottom:8px}
+.panel+.panel{margin-top:12px}
+.side{display:flex;flex-direction:column;gap:12px;min-width:0}
+.side .panel+.panel{margin-top:0}
+.vp{position:relative;height:min(74vh,700px);min-height:380px;border-radius:10px;overflow:hidden;background:var(--vp);border:1px solid var(--line)}
+.vp.lightvp{background:radial-gradient(ellipse at 50% 40%,#22394d,#0b1824 75%)}
+.vp canvas{display:block;width:100%;height:100%;touch-action:none}
+.ovl{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.lbl{position:absolute;transform:translate(-50%,-100%);font-size:12.5px;font-weight:600;color:#eaf6ff;background:rgba(3,17,29,.72);border:1px solid rgba(255,255,255,.18);padding:2px 7px;border-radius:5px;white-space:nowrap}
+.lbl i{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px;vertical-align:0}
+.plbl{position:absolute;transform:translate(-50%,-50%);font-size:11.5px;color:#f1f7fb;background:rgba(3,17,29,.78);padding:1px 6px;border-radius:4px;white-space:nowrap;border-left:2px solid #2cc4bd}
+.plbl.sel{background:#2cc4bd;color:#03141c;font-weight:600}
+.hud{position:absolute;left:10px;top:10px;right:10px;display:flex;gap:6px;flex-wrap:wrap;pointer-events:none}
+.hud span{background:rgba(3,17,29,.7);color:#cfe3f0;border-radius:5px;padding:3px 8px;font-size:12.5px;border:1px solid rgba(255,255,255,.1)}
+.hud span b{color:#fff}
+.vtools{position:absolute;left:10px;bottom:10px;display:flex;gap:6px;flex-wrap:wrap}
+.vtools .btn{background:rgba(3,17,29,.75);color:#e2eef6;border-color:rgba(255,255,255,.18)}
+.vtools .btn.on{background:#2cc4bd;color:#03141c}
+.legend-depth{position:absolute;right:10px;bottom:10px;background:rgba(3,17,29,.75);color:#d6e6f1;border-radius:6px;padding:6px 8px;font-size:12px}
+.legend-depth .gr{width:150px;height:9px;border-radius:3px;background:linear-gradient(90deg,#f0dc7b,#5fc48a,#2399b6,#2c4f9c,#201f5c);margin:3px 0}
+.legend-depth .gr2{display:flex;justify-content:space-between}
+
+/* robot cards */
+.rcard{border:1px solid var(--line);border-radius:9px;padding:10px 11px;background:var(--panel2);border-left:4px solid var(--rc)}
+.rcard+.rcard{margin-top:8px}
+.rhead{display:flex;align-items:center;gap:8px}
+.rhead b{font-family:"Barlow Condensed",sans-serif;font-size:18px}
+.phase{margin-left:auto;font-size:12px;font-weight:600;border-radius:4px;padding:1px 7px;background:var(--chip);color:var(--ink);white-space:nowrap}
+.phase.ok{background:color-mix(in srgb,var(--ok) 18%,transparent);color:var(--ok)}
+.phase.warn{background:color-mix(in srgb,var(--warn) 20%,transparent);color:var(--warn)}
+.phase.bad{background:color-mix(in srgb,var(--bad) 18%,transparent);color:var(--bad)}
+.rmis{font-size:13px;color:var(--muted);margin:2px 0 6px}
+.bat{display:flex;align-items:center;gap:8px;font-size:13px}
+.bar{flex:1;height:8px;background:var(--chip);border-radius:5px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--ok);width:50%}
+.bar.prog i{background:var(--accent)}
+.row3{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:7px 0}
+.row3 small{display:block;font-size:12px}
+.row3 b{font-size:14.5px}
+.btns{display:flex;gap:6px;flex-wrap:wrap}
+.chk{display:flex;flex-wrap:wrap;gap:6px}
+.chk label{display:flex;align-items:center;gap:5px;background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:4px 8px;font-size:13.5px;cursor:pointer}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;flex-wrap:wrap}
+.seg button{border:0;background:var(--panel2);padding:7px 12px;cursor:pointer;font-weight:600;border-right:1px solid var(--line)}
+.seg button:last-child{border-right:0}
+.seg button.on{background:var(--accent);color:var(--accent-ink)}
+
+/* tables */
+.tbl{width:100%;border-collapse:collapse;font-size:13.5px}
+.tbl th{text-align:left;color:var(--muted);font-weight:600;border-bottom:1px solid var(--line);padding:6px 8px;white-space:nowrap}
+.tbl td{border-bottom:1px solid var(--line);padding:6px 8px;vertical-align:top}
+.tbl tr:last-child td{border-bottom:0}
+.scroll{overflow-x:auto}
+.dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;vertical-align:0}
+.st-ok{color:var(--ok);font-weight:600}.st-warn{color:var(--warn);font-weight:600}.st-bad{color:var(--bad);font-weight:600}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.grid4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.chartbox{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+.chartbox h4{font-size:16px;display:flex;justify-content:space-between;align-items:baseline}
+.chartbox h4 small{font-family:Barlow,sans-serif;font-weight:400}
+.chartbox canvas{width:100%;height:170px;display:block;margin-top:4px}
+.keys{display:flex;gap:10px;flex-wrap:wrap;font-size:12.5px;color:var(--muted)}
+.big{font-family:"Barlow Condensed",sans-serif;font-size:28px;font-weight:600;line-height:1}
+.statc{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px;border-top:4px solid var(--rc)}
+.statc .kvs{display:grid;grid-template-columns:1fr 1fr;gap:4px 10px;font-size:13.5px;margin-top:8px}
+.statc .kvs span{color:var(--muted)}
+.log{max-height:300px;overflow:auto;font-size:13px}
+.log div{padding:4px 2px;border-bottom:1px solid var(--line);display:flex;gap:8px}
+.log div:last-child{border-bottom:0}
+.log time{color:var(--muted);flex:none;width:70px}
+.sev{flex:none;font-size:11.5px;font-weight:700;border-radius:4px;padding:0 6px;height:18px;line-height:18px}
+.sev.info{background:var(--chip)}
+.sev.warn{background:var(--warn);color:#fff}
+.sev.crit{background:var(--bad);color:#fff}
+.note{font-size:13px;color:var(--muted);margin-top:8px}
+.callout{border:1px solid color-mix(in srgb,var(--warn) 50%,var(--line));background:color-mix(in srgb,var(--warn) 8%,var(--panel));border-radius:8px;padding:10px 12px;font-size:13.5px}
+.callout.simc{border-color:color-mix(in srgb,var(--sim) 50%,var(--line));background:color-mix(in srgb,var(--sim) 8%,var(--panel))}
+
+/* electronics */
+.ecard{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:6px}
+.ecard .eh{display:flex;gap:10px;align-items:center}
+.ecard .eh svg{flex:none}
+.ecard h4{font-size:18px}
+.ecard .pn{font-size:13px;color:var(--muted)}
+.ecard dl{display:grid;grid-template-columns:auto 1fr;gap:3px 10px;margin:0;font-size:13.5px}
+.ecard dt{color:var(--muted)}
+.ecard dd{margin:0}
+.used{display:flex;gap:4px;flex-wrap:wrap;margin-top:auto}
+.used span{font-size:12px;border-radius:4px;padding:1px 6px;color:#fff;font-weight:600}
+
+/* wiring */
+.wsvg{background:var(--panel);border:1px solid var(--line);border-radius:10px;overflow-x:auto}
+.wsvg svg{display:block;min-width:1100px;width:100%;height:auto}
+.wsvg text{font-family:Barlow,sans-serif}
+.bus{display:inline-flex;align-items:center;gap:5px;font-size:13px}
+.bus i{width:18px;height:3px;border-radius:2px;display:inline-block}
+
+/* comms */
+.cview{background:var(--vp);border-radius:10px;border:1px solid var(--line);overflow:hidden}
+.cview svg{display:block;width:100%;height:auto}
+@keyframes flow{to{stroke-dashoffset:-24}}
+.flow{animation:flow .9s linear infinite}
+@media (prefers-reduced-motion:reduce){.flow{animation:none}}
+
+/* docs */
+.seq{margin:0;padding-left:20px}.seq li{margin:5px 0;max-width:80ch}
+.prot{margin:0;padding-left:18px}.prot li{margin:5px 0}
+.pinsvg svg{display:block;width:100%;max-width:520px;height:auto;margin:0 auto}
+.kpi td:last-child{text-align:right;white-space:nowrap}
+.inrow{display:flex;gap:14px;flex-wrap:wrap;align-items:center}
+.inrow label{display:flex;gap:8px;align-items:center;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:6px 10px}
+.inrow output{font-weight:700;min-width:58px;display:inline-block}
+.docs{display:grid;grid-template-columns:230px minmax(0,1fr);gap:16px}
+.toc{position:sticky;top:60px;align-self:start;display:flex;flex-direction:column;gap:2px}
+.toc button{text-align:left;border:0;background:none;padding:7px 10px;border-radius:6px;cursor:pointer;color:var(--muted);font-weight:600}
+.toc button:hover{background:var(--chip);color:var(--ink)}
+.doc section{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px 18px;margin-bottom:12px}
+.doc h3{font-size:22px;margin-bottom:6px}
+.doc h4{font-size:17px;margin:12px 0 4px}
+.doc p,.doc li{max-width:82ch}
+.doc pre{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:10px;overflow:auto;font-size:12.5px;line-height:1.35}
+
+@media (max-width:1100px){.simgrid{grid-template-columns:1fr}.grid4{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:760px){.grid2,.grid3,.grid4{grid-template-columns:1fr}.docs{grid-template-columns:1fr}.toc{position:static;flex-direction:row;flex-wrap:wrap}.vp{height:58vh}.brand h1{font-size:20px}.clock{min-width:0}}
+</style>
+</head>
+<body>
+<header class="top"><div class="wrap">
+  <div class="brand">
+    <svg width="40" height="40" viewBox="0 0 40 40" aria-hidden="true"><rect width="40" height="40" rx="9" fill="#0d7f86"/><path d="M6 15c4-3 7 3 11 0s7 3 11 0 6 1 6 1" stroke="#fff" stroke-width="2.2" fill="none" stroke-linecap="round"/><rect x="11" y="10" width="18" height="3" rx="1.5" fill="#fff"/><ellipse cx="13" cy="26" rx="6" ry="2.2" fill="#f5a742"/><ellipse cx="27" cy="30" rx="6" ry="2.2" fill="#34c98e"/><ellipse cx="20" cy="34.5" rx="6" ry="2.2" fill="#ad7bff"/></svg>
+    <div><h1>Marine-X autonomous exploration system</h1><p>One ASV and three AUVs working together · simulated operating envelope 0–40 m</p></div>
+  </div>
+  <div class="ctrls">
+    <button class="btn primary" id="btnPlay" aria-label="Pause simulation">Pause</button>
+    <button class="btn" id="btnReset">Reset</button>
+    <label class="bus">Speed <select id="selSpeed" aria-label="Simulation speed"><option value="1">1×</option><option value="5">5×</option><option value="10" selected>10×</option><option value="30">30×</option></select></label>
+    <span class="clock" id="clock" title="Simulated mission time">T+00:00:00</span>
+  </div>
+</div></header>
+<div class="notice"><div class="wrap"><span class="tagsim">Simulated</span><span>Every sensor value, telemetry packet and AI alert on this page is generated by the simulator. The mechanical models and wiring are <b>proposed concepts</b> — nothing here has been built, bench-tested or physically validated.</span></div></div>
+<nav class="tabs" aria-label="Modules"><div class="wrap" id="tabs">
+  <a href="#sim" data-v="sim">Ocean simulation</a>
+  <a href="#mech" data-v="mech">Mechanical design</a>
+  <a href="#electronics" data-v="electronics">Electronics</a>
+  <a href="#wiring" data-v="wiring">Wiring</a>
+  <a href="#comms" data-v="comms">Missions &amp; comms</a>
+  <a href="#ai" data-v="ai">AI monitoring</a>
+  <a href="#map" data-v="map">Seabed mapping</a>
+  <a href="#dashboard" data-v="dashboard">Dashboard</a>
+  <a href="#docs" data-v="docs">Documentation</a>
+</div></nav>
+
+<main><div class="wrap">
+
+<!-- ============ SIM ============ -->
+<section class="view" id="v-sim">
+  <div class="simgrid">
+    <div class="vp" id="simWrap">
+      <div class="ovl" id="simOvl"></div>
+      <div class="hud"><span>Synthetic ocean · 200 × 200 m survey box</span><span>Robot models drawn 4× scale for visibility</span><span id="hudFollow">Camera: overview</span></div>
+      <div class="vtools">
+        <button class="btn sm on" data-cam="overview">Overview</button>
+        <button class="btn sm" data-cam="under">Underwater</button>
+        <button class="btn sm" data-cam="top">Top-down</button>
+        <button class="btn sm" data-cam="side">Side section</button>
+      </div>
+      <div class="legend-depth">Seabed depth<div class="gr"></div><div class="gr2"><span>16 m</span><span>28 m</span><span>40 m</span></div></div>
+    </div>
+    <aside class="side">
+      <div class="panel"><h3>Robots</h3><div id="simRobots"></div></div>
+      <div class="panel"><h3>Layers</h3>
+        <div class="chk" id="layers">
+          <label><input type="checkbox" data-l="paths" checked> Planned paths</label>
+          <label><input type="checkbox" data-l="trails" checked> Travelled tracks</label>
+          <label><input type="checkbox" data-l="links" checked> Acoustic links</label>
+          <label><input type="checkbox" data-l="labels" checked> Labels</label>
+          <label><input type="checkbox" data-l="sonar" checked> Sonar swath</label>
+          <label><input type="checkbox" data-l="water" checked> Sea surface</label>
+        </div>
+        <p class="note">Drag to orbit, scroll or pinch to zoom, right-drag to pan. Use Follow on a robot card to track it.</p>
+      </div>
+    </aside>
+  </div>
+</section>
+
+<!-- ============ MECH ============ -->
+<section class="view" id="v-mech">
+  <div class="vhead"><div><h2>Mechanical design inspection</h2><p>Conceptual CAD-style models of the catamaran ASV and the torpedo-form AUVs. Click a component in the viewport or the parts list to inspect it.</p></div>
+    <div class="seg" id="mechModel"><button data-m="asv" class="on">ASV</button><button data-m="auv1">AUV 1</button><button data-m="auv2">AUV 2</button><button data-m="auv3">AUV 3</button></div></div>
+  <div class="simgrid">
+    <div class="vp lightvp" id="mechWrap"><div class="ovl" id="mechOvl"></div>
+      <div class="hud"><span><span class="tagprop">Proposed</span> Conceptual geometry — not a validated or manufacturable design</span></div>
+      <div class="vtools"><button class="btn sm" id="mechFit">Reset view</button><button class="btn sm" id="mechSpin">Auto-rotate</button></div>
+    </div>
+    <aside class="side">
+      <div class="panel"><h3>View controls</h3>
+        <label class="bus" style="width:100%">Exploded view <input type="range" id="explode" min="0" max="1" step="0.01" value="0" style="flex:1"></label>
+        <div class="chk" style="margin-top:8px">
+          <label><input type="checkbox" id="mLabels" checked> Component labels</label>
+          <label><input type="checkbox" id="mDims" checked> Dimensions</label>
+          <label><input type="checkbox" id="mCut"> Cutaway shells</label>
+          <label><input type="checkbox" id="mSection"> Section view (half cut)</label>
+        </div>
+      </div>
+      <div class="panel"><h3 id="partTitle">Select a component</h3><p id="partInfo" class="note" style="margin-top:0">Each part shows its function, material and sizing assumptions.</p></div>
+      <div class="panel"><h3>Parts list</h3><div class="log" id="partList" style="max-height:260px"></div></div>
+      <div class="panel"><h3>Principal dimensions</h3><table class="tbl" id="dimTable"></table><p class="note">Estimated values for sizing studies only.</p></div>
+    </aside>
+  </div>
+  <div class="panel" style="margin-top:12px">
+    <div class="vhead" style="margin-bottom:8px"><div><h3 style="font-size:22px">Engineering analysis</h3><p id="anaSub">First-order sizing calculations for the selected vehicle. Adjust the inputs and every result recalculates.</p></div><span class="tagprop">Hand-calculation estimates — not FEA or test results</span></div>
+    <div class="inrow" id="anaInputs"></div>
+    <div class="grid3" id="anaOut" style="margin-top:12px"></div>
+    <div class="grid2" style="margin-top:12px">
+      <div><h3 id="massTitle">Mass and buoyancy budget</h3><div class="scroll"><table class="tbl" id="massTable"></table></div></div>
+      <div><h3>Materials, sealing and fasteners</h3><div class="scroll"><table class="tbl" id="matTable"></table></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ ELECTRONICS ============ -->
+<section class="view" id="v-electronics">
+  <div class="vhead"><div><h2>Electronic components</h2><p>Core components, their job in the system and the robot(s) that carry them. Part numbers are typical candidates for a prototype build, not a finalised bill of materials.</p></div>
+    <div class="seg" id="elecFilter"><button data-f="all" class="on">All</button><button data-f="asv">ASV</button><button data-f="auv1">AUV 1</button><button data-f="auv2">AUV 2</button><button data-f="auv3">AUV 3</button></div></div>
+  <div class="grid3" id="elecGrid"></div>
+</section>
+
+<!-- ============ WIRING ============ -->
+<section class="view" id="v-wiring">
+  <div class="vhead"><div><h2>Wiring and electrical architecture</h2><p>Controller-to-component connections, pin assignments, buses and power distribution for each robot.</p></div>
+    <div class="seg" id="wireRobot"><button data-w="asv" class="on">ASV</button><button data-w="auv1">AUV 1</button><button data-w="auv2">AUV 2</button><button data-w="auv3">AUV 3</button></div></div>
+  <div class="callout" style="margin-bottom:12px"><b>Design status:</b> <span id="wireStatus"></span> Solid lines follow the boards’ documented default pin functions (documentation check only). Dashed lines are proposed design choices that still need review. No connection on this page has been bench-tested; verify against current datasheets, add fusing, reverse-polarity and ESD protection, and test before powering hardware.</div>
+  <div class="chk" id="busFilter" style="margin-bottom:10px"></div>
+  <div class="wsvg" id="wireSvg"></div>
+  <div class="panel" style="margin-top:12px"><h3>Connection schedule</h3><div class="scroll"><table class="tbl" id="wireTable"></table></div></div>
+  <div class="grid2" style="margin-top:12px">
+    <div class="panel"><h3>Raspberry Pi 4B — 40-pin header map</h3><div class="pinsvg" id="piHeader"></div><p class="note" id="piNote"></p>
+      <h3 style="margin-top:12px">I²C-1 address map</h3><div class="scroll"><table class="tbl" id="i2cTable"></table></div></div>
+    <div class="panel"><h3>ESP32 pin allocation</h3><div class="scroll"><table class="tbl" id="espTable"></table></div></div>
+  </div>
+  <div class="panel" style="margin-top:12px"><h3>Power budget and endurance</h3><div class="scroll"><table class="tbl" id="powTable"></table></div><p class="note" id="powNote"></p></div>
+  <div class="panel" style="margin-top:12px"><h3>Harness and connector schedule</h3><div class="scroll"><table class="tbl" id="harnTable"></table></div></div>
+  <div class="grid2" style="margin-top:12px">
+    <div class="panel"><h3>Protection design</h3><ul class="prot" id="protList"></ul></div>
+    <div class="panel"><h3>Power-up, failsafe and shutdown sequence</h3><ol class="seq" id="seqList"></ol></div>
+  </div>
+</section>
+
+<!-- ============ COMMS ============ -->
+<section class="view" id="v-comms">
+  <div class="vhead"><div><h2>Missions and communication</h2><p>Each AUV runs its own survey. The ASV coordinates them over an acoustic link and relays telemetry to the shore station by radio.</p></div></div>
+  <div class="grid4" id="missionCards"></div>
+  <div class="panel" style="margin-top:12px">
+    <h3>Link geometry (side section, x vs depth)</h3>
+    <div class="cview" id="commView"></div>
+    <div class="keys" style="margin-top:8px"><span class="bus"><i style="background:#3fd09a"></i>Good ≥ 60%</span><span class="bus"><i style="background:#f2b247"></i>Degraded 15–60%</span><span class="bus"><i style="background:#ff6b6b"></i>Lost &lt; 15%</span><span>Simulated acoustic modem: 200 bit/s, 32-byte telemetry frame, sound speed 1500 m/s, terrain shadowing.</span></div>
+  </div>
+  <div class="grid2" style="margin-top:12px">
+    <div class="panel"><h3>Link status</h3><div class="scroll"><table class="tbl" id="linkTable"></table></div></div>
+    <div class="panel"><h3>Packet and command log</h3><div class="log" id="pktLog"></div></div>
+  </div>
+</section>
+
+<!-- ============ AI ============ -->
+<section class="view" id="v-ai">
+  <div class="vhead"><div><h2>AI monitoring</h2><p>Simulated, rule-based monitoring: depth-compensated residual z-scores, EWMA drift tests, stuck-sensor checks and battery-endurance prediction. These are lightweight statistical detectors, not a trained neural network.</p></div></div>
+  <div class="callout simc" style="margin-bottom:12px"><b>Simulated AI.</b> Detectors run on simulated data in this page. Thresholds are illustrative and have not been tuned or validated on real sensor logs.</div>
+  <div class="grid4" id="healthCards"></div>
+  <div class="grid2" style="margin-top:12px">
+    <div class="panel"><h3>Fault injection test bench</h3>
+      <p class="note" style="margin-top:0">Inject a fault and watch the detectors respond in the alert feed, the charts and the 3D view.</p>
+      <div class="ctrls" style="margin-top:8px">
+        <select id="fiRobot" aria-label="Robot"></select>
+        <select id="fiType" aria-label="Fault type"></select>
+        <button class="btn primary" id="fiGo">Inject fault</button>
+      </div>
+      <h3 style="margin-top:14px">Sensor stream detectors</h3>
+      <div class="scroll"><table class="tbl" id="streamTable"></table></div>
+    </div>
+    <div class="panel"><h3>Alert feed</h3>
+      <div class="seg" id="alertFilter" style="margin-bottom:8px"><button data-a="all" class="on">All</button><button data-a="warn">Warnings</button><button data-a="crit">Critical</button></div>
+      <div class="log" id="alertLog" style="max-height:440px"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ MAP ============ -->
+<section class="view" id="v-map">
+  <div class="vhead"><div><h2>3D seabed mapping</h2><p>Bathymetry reconstructed only from AUV 3’s simulated sonar soundings. Grey areas are unsurveyed.</p></div>
+    <div class="ctrls"><div class="seg" id="mapEx"><button data-x="1" class="on">1× vertical</button><button data-x="2.5">2.5× vertical</button></div><label class="chk"><label><input type="checkbox" id="mapWire"> Wireframe</label></label></div></div>
+  <div class="simgrid">
+    <div class="vp" id="mapWrap"><div class="ovl" id="mapOvl"></div>
+      <div class="hud"><span>Reconstructed from simulated soundings · 61 × 61 grid · 3.3 m cells</span></div>
+      <div class="legend-depth">Measured depth<div class="gr"></div><div class="gr2"><span>16 m</span><span>28 m</span><span>40 m</span></div></div>
+    </div>
+    <aside class="side">
+      <div class="panel"><h3>Survey progress</h3>
+        <div class="row3"><div><small>Coverage</small><b id="mpCov" class="big">0%</b></div><div><small>Soundings</small><b id="mpN">0</b></div><div><small>Lines done</small><b id="mpL">0 / 10</b></div></div>
+        <div class="bar prog"><i id="mpBar" style="width:0"></i></div>
+        <div class="row3"><div><small>Min depth</small><b id="mpMin">—</b></div><div><small>Max depth</small><b id="mpMax">—</b></div><div><small>Mean depth</small><b id="mpMean">—</b></div></div>
+      </div>
+      <div class="panel"><h3>Plan view</h3><canvas id="map2d" width="300" height="300" style="width:100%;aspect-ratio:1;display:block;border-radius:6px"></canvas></div>
+      <div class="panel"><h3>Latest depth readings</h3><div class="scroll"><table class="tbl" id="soundTable"></table></div></div>
+    </aside>
+  </div>
+</section>
+
+<!-- ============ DASHBOARD ============ -->
+<section class="view" id="v-dashboard">
+  <div class="vhead"><div><h2>Live engineering dashboard</h2><p>Fleet status, sensor trends and mission progress, refreshed from the simulation.</p></div><span class="tagsim">Simulated telemetry</span></div>
+  <div class="grid4" id="dashCards"></div>
+  <div class="grid3" style="margin-top:12px">
+    <div class="chartbox"><h4>Depth <small>m</small></h4><canvas id="chDepth"></canvas><div class="keys" id="kDepth"></div></div>
+    <div class="chartbox"><h4>Temperature <small>°C</small></h4><canvas id="chTemp"></canvas><div class="keys" id="kTemp"></div></div>
+    <div class="chartbox"><h4>Battery <small>%</small></h4><canvas id="chBatt"></canvas><div class="keys" id="kBatt"></div></div>
+    <div class="chartbox"><h4>Salinity <small>PSU · AUV 1</small></h4><canvas id="chSal"></canvas></div>
+    <div class="chartbox"><h4>Dissolved oxygen <small>mg/L · AUV 2</small></h4><canvas id="chDO"></canvas></div>
+    <div class="chartbox"><h4>Altitude above seabed <small>m · AUV 3 sonar</small></h4><canvas id="chAlt"></canvas></div>
+  </div>
+  <div class="grid2" style="margin-top:12px">
+    <div class="panel"><h3>Sensor table</h3><div class="scroll"><table class="tbl" id="sensTable"></table></div><p class="note">Red markers on charts show samples flagged by the AI monitor.</p></div>
+    <div class="panel"><h3>Mission progress and communication</h3><div id="dashProg"></div><h3 style="margin-top:12px">Event log</h3><div class="log" id="eventLog" style="max-height:220px"></div></div>
+  </div>
+</section>
+
+<!-- ============ DOCS ============ -->
+<section class="view" id="v-docs">
+  <div class="vhead"><div><h2>Project documentation</h2><p>Architecture, design rationale and simulation results for the Marine-X prototype.</p></div></div>
+  <div class="docs">
+    <nav class="toc" id="docToc"></nav>
+    <div class="doc" id="docBody"></div>
+  </div>
+</section>
+
+</div></main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+(function(){
+'use strict';
+/* ================================================================
+   Utilities
+================================================================ */
+const $=(s,r)=>(r||document).querySelector(s);
+const $$=(s,r)=>Array.from((r||document).querySelectorAll(s));
+const clamp=(a,lo,hi)=>Math.max(lo,Math.min(hi,a));
+const V=(x,y,z)=>new THREE.Vector3(x,y,z);
+function gauss(){let u=0,w=0;while(!u)u=Math.random();while(!w)w=Math.random();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*w);}
+function fmtT(t){t=Math.max(0,Math.floor(t));const h=Math.floor(t/3600),m=Math.floor(t%3600/60),s=t%60;return 'T+'+[h,m,s].map(n=>String(n).padStart(2,'0')).join(':');}
+function f(v,d){return (v==null||!isFinite(v))?'—':v.toFixed(d==null?1:d);}
+function cssVar(n){return getComputedStyle(document.documentElement).getPropertyValue(n).trim();}
+function esc(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+
+/* ================================================================
+   Environment — ground-truth synthetic seabed & water column
+================================================================ */
+function seabed(x,z){
+  let h=-30+4.5*Math.sin(x*0.028+0.6)*Math.cos(z*0.022-0.3)+2.6*Math.sin(x*0.061+z*0.047)+1.4*Math.cos(x*0.13-z*0.09)+0.6*Math.sin(x*0.31+z*0.27);
+  h+=7*Math.exp(-((x-35)*(x-35)+(z+20)*(z+20))/900);
+  h-=6*Math.exp(-((x+45)*(x+45))/300-((z-30)*(z-30))/2500);
+  return clamp(h,-40,-16);
+}
+const DSTOPS=[[0,[.94,.86,.48]],[.25,[.37,.77,.54]],[.5,[.14,.6,.71]],[.75,[.17,.31,.61]],[1,[.13,.12,.36]]];
+function depthColor(d){const t=clamp((d-16)/24,0,1);for(let i=1;i<DSTOPS.length;i++){if(t<=DSTOPS[i][0]){const a=DSTOPS[i-1],b=DSTOPS[i];const k=(t-a[0])/(b[0]-a[0]);return [0,1,2].map(j=>a[1][j]+(b[1][j]-a[1][j])*k);}}return DSTOPS[4][1];}
+const sigm=x=>1/(1+Math.exp(-x));
+function truth(d,x,z){const a=sigm((d-18)/2.5),b=sigm((d-20)/3);return{temp:28.6-0.11*d-2.2*a+0.15*Math.sin(x*0.02),sal:34.2+0.035*d+0.6*a,do:6.6-0.04*d-1.4*b+0.2*Math.sin(z*0.03)};}
+function refModel(d){const a=sigm((d-18)/2.5),b=sigm((d-20)/3);return{temp:28.6-0.11*d-2.2*a,sal:34.2+0.035*d+0.6*a,do:6.6-0.04*d-1.4*b};}
+const LAT0=15.4,LON0=73.6; // arbitrary survey datum used for simulated GPS
+
+/* ================================================================
+   Robots & mission paths
+================================================================ */
+const DEFS=[
+  {id:'asv', name:'ASV', kind:'asv', speed:1.0, mission:'Surface navigation, GPS fix, mission coordination, telemetry relay', sensors:['temp']},
+  {id:'auv1',name:'AUV 1',kind:'auv',speed:1.5, payload:'ctd',   mission:'Temperature and salinity survey (yo-yo profiling)', sensors:['temp','sal','depth']},
+  {id:'auv2',name:'AUV 2',kind:'auv',speed:1.5, payload:'do',    mission:'Dissolved oxygen survey (three-layer box pattern)', sensors:['do','temp','depth']},
+  {id:'auv3',name:'AUV 3',kind:'auv',speed:1.3, payload:'sonar', mission:'Seabed exploration and bathymetric mapping', sensors:['temp','depth','alt'], follow:true}
+];
+const COL={asv:'#49b9f0',auv1:'#f5a742',auv2:'#34c98e',auv3:'#ad7bff'};
+function subdiv(pts,step){const out=[pts[0].clone()];for(let i=1;i<pts.length;i++){const a=pts[i-1],b=pts[i];const n=Math.max(1,Math.ceil(a.distanceTo(b)/step));for(let k=1;k<=n;k++)out.push(a.clone().lerp(b,k/n));}return out;}
+function pathFor(id){
+  if(id==='asv'){const p=[];for(let i=0;i<=24;i++){const a=i/24*Math.PI*2;p.push(V(Math.cos(a)*30,0,Math.sin(a)*30));}return p;}
+  if(id==='auv1'){const p=[];let flip=false,top=true;[-60,-20,20,60].forEach(z=>{const xs=[-80,-40,0,40,80];if(flip)xs.reverse();flip=!flip;xs.forEach(x=>{p.push(V(x,top?-3:seabed(x,z)+4,z));top=!top;});});return p;}
+  if(id==='auv2'){const raw=[];[[70,-12],[50,-20],[30,-26]].forEach(([s,y])=>raw.push(V(-s,y,-s),V(s,y,-s),V(s,y,s),V(-s,y,s),V(-s,y,-s)));return subdiv(raw,15).map(p=>{p.y=Math.max(p.y,seabed(p.x,p.z)+3);return p;});}
+  const raw=[];let flip=false;for(let z=-90;z<=90;z+=20){const a=V(-90,0,z),b=V(90,0,z);if(flip)raw.push(b,a);else raw.push(a,b);flip=!flip;}
+  const out=subdiv(raw,10);out.forEach(p=>p.y=seabed(p.x,p.z)+5);return out;
+}
+function pathLen(p,from){let L=0;for(let i=Math.max(1,from||1);i<p.length;i++)L+=p[i].distanceTo(p[i-1]);return L;}
+
+/* ================================================================
+   Simulation state
+================================================================ */
+const MN=61,MSZ=200,MST=MSZ/(MN-1);
+const S={playing:true,speed:10,t:0};
+function dockOff(r){return V(0,-2.4,(r.idx-2)*1.3);}
+function initState(){
+  S.t=0;S.alerts=[];S.events=[];S.pkts=[];S.cmds=[];S.fx=[];S.alertSeq=0;
+  S.uplink={bytes:0,frames:0,drops:0,status:'Online',buffer:0,last:0};
+  S.map={meas:new Float32Array(MN*MN).fill(NaN),cnt:new Uint16Array(MN*MN),covered:0,sound:[],pings:0,dirty:true,ver:0};
+  S.robots=DEFS.map((d,i)=>{
+    const path=pathFor(d.id);
+    return Object.assign({},d,{idx:i,path,total:pathLen(path),pos:V(0,0,0),yaw:0,pitch:0,wp:0,phase:d.kind==='asv'?'nav':'mission',enabled:true,
+      battery:100,dist:0,hist:[],lastSample:-99,lastPkt:-99+i,lastTrail:-99,trail:[],link:{q:1,status:'Good',sent:0,recv:0,bytes:0,lat:0,dist:0},
+      faults:{},ai:{},alertCool:{},drainEwma:null,prevBatt:100,prevT:0,done:false,abort:false,pending:null,riskFlag:false,lastGps:null,readings:{}});
+  });
+  const asv=S.robots[0];asv.pos.set(30,0,0);
+  S.robots.slice(1).forEach(r=>r.pos.copy(asv.pos).add(dockOff(r)));
+  logEvent(null,'info','Mission started — three AUVs launched from the ASV');
+  if(SIM.ready)SIM.resetVisuals();
+  if(MAPV.ready)MAPV.reset();
+  chartsDirty=true;
+}
+
+/* ---------------- events & alerts ---------------- */
+function logEvent(r,sev,msg){S.events.unshift({t:S.t,r:r?r.name:'System',sev,msg});if(S.events.length>120)S.events.pop();}
+function addAlert(r,sev,type,msg,key){
+  const k=(r?r.id:'sys')+':'+(key||type);
+  const last=(r?r.alertCool:S)[k];
+  if(last!=null&&S.t-last<40)return;
+  (r?r.alertCool:S)[k]=S.t;
+  S.alerts.unshift({id:++S.alertSeq,t:S.t,r:r?r.name:'System',rid:r?r.id:'',sev,type,msg});
+  if(S.alerts.length>150)S.alerts.pop();
+  logEvent(r,sev,type+': '+msg);
+}
+
+/* ---------------- motion ---------------- */
+function angLerp(a,b,k){let d=b-a;while(d>Math.PI)d-=2*Math.PI;while(d<-Math.PI)d+=2*Math.PI;return a+d*k;}
+function moveToward(r,target,dt,follow){
+  const sp=r.speed*dt;let moved=0,arrived=false;
+  const dx=target.x-r.pos.x,dz=target.z-r.pos.z,dh=Math.hypot(dx,dz);
+  if(follow){
+    const want=Math.min(-1.5,seabed(r.pos.x,r.pos.z)+5);
+    const dy=clamp(want-r.pos.y,-0.7*dt,0.7*dt);r.pos.y+=dy;
+    if(dh<=sp){r.pos.x=target.x;r.pos.z=target.z;moved=dh;arrived=true;}else{r.pos.x+=dx/dh*sp;r.pos.z+=dz/dh*sp;moved=sp;}
+    if(dh>0.01)r.yaw=angLerp(r.yaw,Math.atan2(-dz,dx),clamp(dt*1.5,0,1));
+    r.pitch+=(Math.atan2(dy/Math.max(dt,1e-3),r.speed)-r.pitch)*clamp(dt,0,1);
+    return{moved:Math.hypot(moved,dy),arrived};
+  }
+  const d=r.pos.distanceTo(target);
+  if(d<=sp){moved=d;arrived=true;const dy=target.y-r.pos.y;r.pos.copy(target);if(d>0.01){r.pitch+=(Math.atan2(dy,Math.max(dh,0.01))-r.pitch)*0.3;}}
+  else{const dir=target.clone().sub(r.pos).divideScalar(d);r.pos.addScaledVector(dir,sp);moved=sp;
+    if(dh>0.05)r.yaw=angLerp(r.yaw,Math.atan2(-dz,dx),clamp(dt*1.5,0,1));
+    r.pitch+=(clamp(Math.atan2(target.y-r.pos.y,Math.max(dh,0.5)),-0.6,0.6)-r.pitch)*clamp(dt,0,1);}
+  return{moved,arrived};
+}
+function remainingDist(r){if(r.phase!=='mission')return r.pos.distanceTo(S.robots[0].pos);const p=r.path;let L=p[r.wp]?r.pos.distanceTo(p[r.wp]):0;L+=pathLen(p,r.wp+1);return L+p[p.length-1].distanceTo(S.robots[0].pos);}
+function progressOf(r){
+  if(r.kind==='asv'){const a=S.robots.slice(1);return a.reduce((s,x)=>s+progressOf(x),0)/a.length;}
+  if(r.done)return 100;
+  return clamp(r.wp/r.path.length*100,0,100);
+}
+function statusOf(r){
+  if(r.kind==='asv')return r.enabled?['Navigating','ok']:['Holding station','warn'];
+  if(r.battery<=0)return['Battery depleted','bad'];
+  if(r.phase==='docked')return r.done?['Docked · complete','ok']:['Docked · charging','warn'];
+  if(!r.enabled)return['Holding (stopped)','warn'];
+  if(r.phase==='returning')return r.abort?['Returning · low battery','bad']:['Returning to ASV','ok'];
+  return[r.id==='auv3'?'Mapping':'Surveying','ok'];
+}
+
+function step(dt){
+  const asv=S.robots[0];
+  // ASV
+  if(asv.enabled){const tgt=asv.path[asv.wp];const m=moveToward(asv,tgt,dt,false);asv.dist+=m.moved;if(m.arrived){asv.wp=(asv.wp+1)%asv.path.length;}asv.battery-=m.moved*0.002;}
+  asv.pos.y=0;asv.pitch=0;
+  const sun=0.75+0.25*Math.sin(S.t/900);
+  asv.solar=95*sun;
+  asv.battery=clamp(asv.battery-0.004*dt*((asv.faults.batt&&asv.faults.batt.until>S.t)?6:1)+0.0032*dt*sun,0,100);
+  // AUVs
+  for(let i=1;i<S.robots.length;i++){
+    const r=S.robots[i];
+    if(r.phase==='docked'){r.pos.copy(asv.pos).add(dockOff(r));r.yaw=asv.yaw;r.pitch=0;r.battery=Math.min(100,r.battery+0.08*dt);continue;}
+    if(r.battery<=0){r.enabled=false;continue;}
+    const fmul=(r.faults.batt&&r.faults.batt.until>S.t)?6:1;
+    if(!r.enabled){r.battery=Math.max(0,r.battery-0.004*dt*fmul);continue;}
+    let target,follow=false;
+    if(r.phase==='mission'){target=r.path[r.wp];follow=!!r.follow;}
+    else{target=asv.pos.clone().add(dockOff(r));}
+    const m=moveToward(r,target,dt,follow);
+    r.dist+=m.moved;
+    r.battery=Math.max(0,r.battery-(m.moved*0.033+0.002*dt)*fmul);
+    const sb=seabed(r.pos.x,r.pos.z);
+    if(r.pos.y<sb+1.2)r.pos.y=sb+1.2;
+    if(r.phase==='mission'&&r.pos.y>-0.8)r.pos.y=-0.8;
+    if(m.arrived){
+      if(r.phase==='mission'){r.wp++;if(r.wp>=r.path.length){r.phase='returning';r.done=true;logEvent(r,'info','Survey pattern complete — returning to ASV');}}
+      else if(r.phase==='returning'){r.phase='docked';logEvent(r,'info',r.done?'Recovered into ASV cradle — mission complete':'Docked on ASV — charging');}
+    }
+    if(r.phase==='returning'&&r.pos.distanceTo(target)<1.5){r.phase='docked';logEvent(r,'info',r.done?'Recovered into ASV cradle — mission complete':'Docked on ASV — charging');}
+    if(r.id==='auv3'&&r.phase==='mission'&&r.sonarOn!==false)sonarPing(r);
+  }
+  // sampling, AI, comms, commands, trails
+  for(const r of S.robots){
+    if(S.t-r.lastSample>=2){r.lastSample=S.t;sample(r);}
+    if(S.t-r.lastTrail>=0.6){r.lastTrail=S.t;const tr=r.trail;const p=r.pos;const l=tr[tr.length-1];if(!l||Math.hypot(l[0]-p.x,l[1]-p.y,l[2]-p.z)>0.6){tr.push([p.x,p.y,p.z]);if(tr.length>4000)tr.shift();r.trailDirty=true;}}
+  }
+  comms(dt);
+  processCmds();
+}
+
+/* ---------------- sonar mapping ---------------- */
+function sonarPing(r){
+  const alt=r.pos.y-seabed(r.pos.x,r.pos.z);
+  if(alt>20)return;
+  const R=Math.min(13,1.6+alt*2.1);
+  const i0=Math.max(0,Math.floor((r.pos.x-R+100)/MST)),i1=Math.min(MN-1,Math.ceil((r.pos.x+R+100)/MST));
+  const j0=Math.max(0,Math.floor((r.pos.z-R+100)/MST)),j1=Math.min(MN-1,Math.ceil((r.pos.z+R+100)/MST));
+  const M=S.map;
+  for(let j=j0;j<=j1;j++)for(let i=i0;i<=i1;i++){
+    const x=-100+i*MST,z=-100+j*MST;const dx=x-r.pos.x,dz=z-r.pos.z;if(dx*dx+dz*dz>R*R)continue;
+    const k=j*MN+i;const val=seabed(x,z)+gauss()*0.12*(1+Math.hypot(dx,dz)/R);
+    if(M.cnt[k]===0){M.covered++;M.meas[k]=val;M.cnt[k]=1;}else if(M.cnt[k]<20){M.meas[k]=(M.meas[k]*M.cnt[k]+val)/(M.cnt[k]+1);M.cnt[k]++;}
+  }
+  M.pings++;M.dirty=true;
+}
+
+/* ---------------- sensors ---------------- */
+function sample(r){
+  const fl={};
+  if(r.kind==='asv'){
+    const sst=truth(0.5,r.pos.x,r.pos.z).temp+gauss()*0.05;
+    let gx=r.pos.x,gz=r.pos.z;
+    const gf=r.faults.gps;if(gf&&gf.n>0){gx+=40;gz-=25;gf.n--;}
+    const lat=LAT0-gz/111320,lon=LON0+gx/(111320*Math.cos(LAT0*Math.PI/180));
+    const rd={temp:sst,lat,lon,batt:r.battery,solar:r.solar,depth:0,gx,gz};
+    const tf=r.faults.temp;if(tf&&tf.n>0){rd.temp+=5;tf.n--;}
+    r.readings=rd;
+    fl.temp=aiStream(r,'temp',rd.temp,0.5);
+    if(r.lastGps){const dd=Math.hypot(gx-r.lastGps[0],gz-r.lastGps[1])/Math.max(0.1,S.t-r.lastGps[2]);if(dd>5)addAlert(r,'warn','GPS position jump',`implied speed ${dd.toFixed(1)} m/s exceeds ASV limit — fix rejected, dead-reckoning used`,'gps');}
+    r.lastGps=[gx,gz,S.t];
+    batteryAI(r);
+    pushHist(r,{t:S.t,depth:0,temp:rd.temp,batt:r.battery,fl});
+    return;
+  }
+  if(r.phase==='docked'){r.readings={batt:r.battery,depth:-r.pos.y};pushHist(r,{t:S.t,depth:-r.pos.y,batt:r.battery,fl});batteryAI(r);return;}
+  const d=-r.pos.y;const tr=truth(d,r.pos.x,r.pos.z);
+  const rd={depth:d+gauss()*0.02,batt:r.battery};
+  const has=k=>r.sensors.includes(k);
+  if(has('temp'))rd.temp=tr.temp+gauss()*0.05;
+  if(has('sal'))rd.sal=tr.sal+gauss()*0.02;
+  if(has('do'))rd.do=tr.do+gauss()*0.08;
+  if(has('alt')){rd.alt=r.pos.y-seabed(r.pos.x,r.pos.z)+gauss()*0.05;rd.bottom=rd.depth+rd.alt;}
+  // faults
+  const F=r.faults;
+  if(F.temp&&F.temp.n>0&&rd.temp!=null){rd.temp+=5;F.temp.n--;}
+  if(F.sal&&F.sal.n>0&&rd.sal!=null){F.sal.k=(F.sal.k||0)+1;rd.sal+=0.12*F.sal.k;F.sal.n--;}
+  if(F.do&&F.do.n>0&&rd.do!=null){rd.do-=3.5;F.do.n--;}
+  if(F.depth&&F.depth.n>0){if(F.depth.v==null)F.depth.v=rd.depth;rd.depth=F.depth.v;F.depth.n--;}
+  if(F.sonar&&F.sonar.n>0&&rd.alt!=null){rd.alt=null;rd.bottom=null;F.sonar.n--;}
+  if(Math.random()<0.0025){const ks=['temp','sal','do'].filter(k=>rd[k]!=null);if(ks.length){const k=ks[Math.floor(Math.random()*ks.length)];rd[k]+=(k==='do'?2.2:k==='sal'?0.9:1.6)*(Math.random()<.5?-1:1);}}
+  r.readings=rd;
+  // AI
+  const md=rd.depth;
+  ['temp','sal','do'].forEach(k=>{if(rd[k]!=null)fl[k]=aiStream(r,k,rd[k],md);});
+  fl.depth=depthAI(r,rd.depth);
+  if(has('alt'))fl.alt=sonarAI(r,rd.alt);
+  batteryAI(r);
+  pushHist(r,Object.assign({t:S.t,fl},rd));
+}
+function pushHist(r,s){r.hist.push(s);if(r.hist.length>360)r.hist.shift();chartsDirty=true;}
+
+/* ================================================================
+   Simulated AI monitor
+================================================================ */
+const THR={temp:{floor:0.05,drift:0.6,u:'°C',n:'Temperature'},sal:{floor:0.02,drift:0.25,u:'PSU',n:'Salinity'},do:{floor:0.08,drift:0.8,u:'mg/L',n:'Dissolved O₂'}};
+function aiStream(r,key,val,depth){
+  const st=r.ai[key]||(r.ai[key]={buf:[],fast:null,slow:null,n:0,z:0,status:'Learning',last:null,flags:0});
+  const res=val-refModel(depth)[key];let flag=false;
+  if(st.buf.length>=12){
+    const m=st.buf.reduce((a,b)=>a+b,0)/st.buf.length;
+    const sd=Math.max(Math.sqrt(st.buf.reduce((a,b)=>a+(b-m)*(b-m),0)/st.buf.length),THR[key].floor);
+    st.z=(res-m)/sd;
+    if(Math.abs(st.z)>5){flag=true;addAlert(r,Math.abs(st.z)>25?'crit':'warn',THR[key].n+' anomaly',`reading ${val.toFixed(2)} ${THR[key].u}, residual z = ${st.z.toFixed(1)} vs depth-referenced profile`,key+'z');}
+  }
+  st.fast=st.fast==null?res:st.fast+0.35*(res-st.fast);
+  if(!flag){st.buf.push(res);if(st.buf.length>30)st.buf.shift();st.slow=st.slow==null?res:st.slow+0.03*(res-st.slow);}
+  st.n++;
+  if(!flag&&st.n>25&&Math.abs(st.fast-st.slow)>THR[key].drift){flag=true;addAlert(r,'warn',THR[key].n+' drift',`EWMA offset ${(st.fast-st.slow).toFixed(2)} ${THR[key].u} — possible sensor fouling or calibration drift`,key+'d');}
+  st.status=flag?'Anomaly':st.n<12?'Learning':'Nominal';st.last=val;if(flag)st.flags++;
+  return flag;
+}
+function depthAI(r,d){
+  const st=r.ai.depth||(r.ai.depth={same:0,prev:null,status:'Nominal',last:null,flags:0,z:0});
+  if(st.prev!=null&&d===st.prev)st.same++;else st.same=0;
+  st.prev=d;st.last=d;
+  if(st.same>=4&&r.enabled){addAlert(r,'crit','Pressure sensor stuck',`depth reading frozen at ${d.toFixed(2)} m for ${st.same+1} samples while vehicle is under way`,'dstuck');st.status='Anomaly';st.flags++;return true;}
+  st.status='Nominal';return false;
+}
+function sonarAI(r,a){
+  const st=r.ai.alt||(r.ai.alt={miss:0,status:'Nominal',last:null,flags:0,z:0});
+  st.last=a;
+  if(a==null){st.miss++;if(st.miss>=3){addAlert(r,'warn','Sonar no-return',`${st.miss} consecutive pings without bottom detection — mapping paused in that area`,'snr');st.status='Anomaly';st.flags++;return true;}st.status='Checking';return false;}
+  st.miss=0;st.status='Nominal';return false;
+}
+function batteryAI(r){
+  const dt=S.t-r.prevT;if(dt<=0)return;
+  const rate=(r.prevBatt-r.battery)/dt;r.prevBatt=r.battery;r.prevT=S.t;
+  if(r.phase==='docked'){r.drainEwma=null;return;}
+  r.drainEwma=r.drainEwma==null?rate:r.drainEwma+0.25*(rate-r.drainEwma);
+  const nominal=r.kind==='asv'?0.004:(r.enabled?0.033*r.speed+0.002:0.004);
+  if(r.drainEwma>2.5*nominal&&r.drainEwma>0.01)addAlert(r,'warn','Abnormal battery discharge',`${(r.drainEwma*60).toFixed(2)} %/min vs ${(nominal*60).toFixed(2)} %/min expected — check thruster load / cell imbalance`,'bdrain');
+  if(r.kind==='asv'){if(r.battery<25)addAlert(r,'warn','ASV battery low',`${r.battery.toFixed(0)} %`,'blow');return;}
+  if(r.phase==='mission'&&r.enabled){
+    const need=remainingDist(r)*0.033+remainingDist(r)/r.speed*0.002;
+    if(need+10>r.battery&&!r.riskFlag){r.riskFlag=true;addAlert(r,'warn','Mission completion at risk',`predicted need ${need.toFixed(0)} % + 10 % reserve, available ${r.battery.toFixed(0)} %`,'risk');}
+    if(r.battery<12){r.phase='returning';r.abort=true;addAlert(r,'crit','Auto return-to-ASV',`battery ${r.battery.toFixed(0)} % below 12 % reserve — survey aborted at waypoint ${r.wp}/${r.path.length}`,'rtb');}
+    else if(r.battery<20)addAlert(r,'warn','Battery low',`${r.battery.toFixed(0)} % remaining`,'blow');
+  }
+  if(r.battery<=0)addAlert(r,'crit','Battery depleted','vehicle will surface on positive buoyancy — recovery required','bdead');
+}
+function healthOf(r){
+  let worst='ok';for(const a of S.alerts){if(a.rid!==r.id||S.t-a.t>45)continue;if(a.sev==='crit'){worst='bad';break;}if(a.sev==='warn')worst='warn';}
+  if(r.battery<=0)worst='bad';return worst;
+}
+
+/* ================================================================
+   Communication
+================================================================ */
+function occluded(a,b){for(let k=1;k<8;k++){const t=k/8;const x=a.x+(b.x-a.x)*t,y=a.y+(b.y-a.y)*t,z=a.z+(b.z-a.z)*t;if(y<seabed(x,z)+0.5)return true;}return false;}
+function comms(dt){
+  const asv=S.robots[0];
+  for(let i=1;i<S.robots.length;i++){
+    const r=S.robots[i],L=r.link;
+    const d=r.pos.distanceTo(asv.pos);L.dist=d;
+    if(r.phase==='docked'){L.q=1;L.status='Docked (wired)';L.lat=0;}
+    else{
+      let q=clamp(1-Math.pow(d/220,1.6),0,1)*(0.9+0.1*Math.sin(S.t*0.21+i*1.7));
+      if(r.battery<=0)q=0;
+      L.shadow=occluded(asv.pos.clone().setY(-1),r.pos);if(L.shadow)q*=0.25;
+      L.q=q;L.status=q>=0.6?'Good':q>=0.15?'Degraded':'Lost';L.lat=d/1500+1.28;
+    }
+    if(S.t-r.lastPkt>=4){
+      r.lastPkt=S.t;L.sent++;
+      const ok=r.phase==='docked'||Math.random()<Math.min(1,L.q*1.05);
+      if(ok){L.recv++;L.bytes+=32;S.uplink.buffer+=32;}
+      S.pkts.unshift({t:S.t,r:r.name,ok,msg:ok?`Telemetry frame #${L.sent} received (${L.lat.toFixed(2)} s, ${(L.q*100).toFixed(0)} % link)`:`Telemetry frame #${L.sent} lost (${(L.q*100).toFixed(0)} % link${L.shadow?', terrain shadow':''})`});
+      if(S.pkts.length>80)S.pkts.pop();
+      if(S.fx.length<40&&r.phase!=='docked')S.fx.push({r,ok,age:0});
+    }
+  }
+  const U=S.uplink;
+  if(S.t-U.last>=2){U.last=S.t;
+    if(Math.random()<0.03){U.status='Retrying';U.drops++;}
+    else{U.status='Online';U.bytes+=U.buffer+48;U.frames++;U.buffer=0;}}
+}
+function sendCmd(r){
+  if(r.pending)return;
+  if(r.kind==='asv'){r.enabled=!r.enabled;logEvent(r,'info',r.enabled?'Resumed surface navigation (radio command from shore)':'Holding station (radio command from shore)');return;}
+  const action=(r.phase==='docked'||!r.enabled)?'START':'STOP';
+  r.pending=action;S.cmds.push({r,action,t:S.t,due:null,warned:false});
+  S.pkts.unshift({t:S.t,r:r.name,ok:true,msg:`Command ${action} queued at ASV`});
+}
+function applyCmd(c){
+  const r=c.r;
+  if(c.action==='START'){
+    if(r.battery<=0){logEvent(r,'warn','START rejected — battery depleted');}
+    else if(r.phase==='docked'){
+      if(r.battery<30){logEvent(r,'warn',`START rejected — charging (${r.battery.toFixed(0)} %, launch needs 30 %)`);}
+      else{if(r.done){r.wp=0;r.done=false;r.riskFlag=false;}r.abort=false;r.phase='mission';r.enabled=true;logEvent(r,'info','Launched from ASV — resuming survey');}
+    }else{r.enabled=true;logEvent(r,'info','START acknowledged — resuming');}
+  }else{r.enabled=false;logEvent(r,'info','STOP acknowledged — holding position');}
+  r.pending=null;
+  S.pkts.unshift({t:S.t,r:r.name,ok:true,msg:`ACK ${c.action}`});
+}
+function processCmds(){
+  S.cmds=S.cmds.filter(c=>{
+    const r=c.r;
+    if(r.phase==='docked'){applyCmd(c);return false;}
+    if(c.due==null){
+      if(r.link.q>0.15){c.due=S.t+r.link.lat;S.pkts.unshift({t:S.t,r:r.name,ok:true,msg:`ASV → ${r.name} acoustic command ${c.action} transmitted`});}
+      else if(!c.warned){c.warned=true;S.pkts.unshift({t:S.t,r:r.name,ok:false,msg:`Command ${c.action} held — acoustic link lost, retrying`});}
+      return true;
+    }
+    if(S.t>=c.due){applyCmd(c);return false;}
+    return true;
+  });
+}
+function injectFault(r,type){
+  const n={temp:6,sal:15,do:6,depth:8,sonar:6,gps:3}[type];
+  if(type==='batt')r.faults.batt={until:S.t+90};
+  else r.faults[type]={n,k:0,v:null};
+  logEvent(r,'info',`Test fault injected: ${FAULTS[type]}`);
+}
+const simTimers=[];
+function setTimeoutSim(fn,dt){simTimers.push({at:S.t+dt,fn});}
+function runSimTimers(){for(let i=simTimers.length-1;i>=0;i--){if(S.t>=simTimers[i].at){simTimers[i].fn();simTimers.splice(i,1);}}}
+const FAULTS={temp:'Temperature spike (+5 °C)',sal:'Salinity drift (+0.12 PSU per sample)',do:'Dissolved-oxygen dropout (−3.5 mg/L)',depth:'Pressure sensor freeze',sonar:'Sonar no-return',gps:'GPS position jump',batt:'Abnormal battery drain (×6)'};
+const FAULTS_FOR={asv:['temp','gps','batt'],auv1:['temp','sal','depth','batt'],auv2:['do','temp','depth','batt'],auv3:['sonar','temp','depth','batt']};
+
+/* ================================================================
+   3D helpers & models
+================================================================ */
+function mat(c,o){return new THREE.MeshStandardMaterial(Object.assign({color:c,roughness:.5,metalness:.2},o||{}));}
+function cylX(r,len,m,seg,open){const me=new THREE.Mesh(new THREE.CylinderGeometry(r,r,len,seg||24,1,!!open),m);me.rotation.z=Math.PI/2;return me;}
+function box(w,h,d,m){return new THREE.Mesh(new THREE.BoxGeometry(w,h,d),m);}
+function at(o,x,y,z){o.position.set(x,y,z);return o;}
+function prop(r,n,color){const g=new THREE.Group();const hub=new THREE.Mesh(new THREE.SphereGeometry(r*0.22,12,8),mat(color,{metalness:.6}));g.add(hub);
+  for(let i=0;i<n;i++){const p=new THREE.Group();p.rotation.x=i*Math.PI*2/n;const b=box(0.006,r,r*0.42,mat(color,{metalness:.6}));b.position.y=r/2;b.rotation.y=0.55;p.add(b);g.add(p);}return g;}
+function textSprite(text,o){
+  o=o||{};const fs=o.fs||30,pad=10;const c=document.createElement('canvas');let ctx=c.getContext('2d');
+  const font=`600 ${fs}px Barlow, Arial, sans-serif`;ctx.font=font;const w=Math.ceil(ctx.measureText(text).width||text.length*fs*.55)+pad*2;
+  c.width=w;c.height=fs+pad*2;ctx=c.getContext('2d');ctx.font=font;
+  if(o.bg){ctx.fillStyle=o.bg;ctx.fillRect(0,0,c.width,c.height);}
+  ctx.fillStyle=o.fg||'#e9f5ff';ctx.textBaseline='middle';ctx.fillText(text,pad,c.height/2);
+  const tex=new THREE.CanvasTexture(c);tex.minFilter=THREE.LinearFilter;
+  const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,depthTest:o.depthTest!==false,fog:false}));
+  const H=o.h||2;sp.scale.set(H*c.width/c.height,H,1);return sp;
+}
+
+function buildAUV(payload){
+  const g=new THREE.Group(),parts=[],spin=[];const R=0.075;
+  const Y=0xf1c232,AL=0x9aa6b2,DK=0x2b333b;
+  function P(name,obj,ex,info,shell){obj.userData.base=obj.position.clone();obj.userData.ex=ex;g.add(obj);parts.push({name,obj,ex,info,shell:!!shell});return obj;}
+  const nose=new THREE.Mesh(new THREE.SphereGeometry(R,28,16,0,Math.PI*2,0,Math.PI/2),mat(Y));nose.rotation.z=-Math.PI/2;nose.position.x=0.55;
+  P('Nose cone',nose,V(0.36,0,0),'Front section. Hemispherical free-flooding fairing in ASA/PETG; reduces form drag and protects the forward sensor head. Ø150 mm.');
+  P('Front sensor bay',at(cylX(R,0.22,mat(Y)),0.44,0,0),V(0.22,0,0),'Free-flooding payload section with M4 sensor mounting points on 30 mm pitch rails. Houses the mission-specific sensor.');
+  P('Electronics enclosure',at(cylX(R,0.30,mat(0x9fd3ea,{transparent:true,opacity:.32,roughness:.08,metalness:0,depthWrite:false})),0.18,0,0),V(0,0,0),'Pressure housing: Ø150 mm cast-acrylic tube, 6 mm wall (see the pressure-housing check below), double radial O-ring flanges. Not yet pressure-tested. Contains Raspberry Pi, ESP32, ESCs and IMU.',true);
+  P('Front end cap',at(cylX(R*1.05,0.016,mat(AL,{metalness:.7,roughness:.35})),0.33,0,0),V(0.12,0,0),'6061-T6 aluminium flange + end cap with double radial O-ring seal.');
+  P('Rear end cap and penetrators',at(cylX(R*1.05,0.016,mat(AL,{metalness:.7,roughness:.35})),0.03,0,0),V(-0.08,0,0),'Aluminium end cap carrying potted cable penetrators for thrusters, servos, sensors and the vent plug.');
+  P('Raspberry Pi 4B',at(box(0.085,0.004,0.056,mat(0x1f7a3a)),0.22,0.01,0),V(0,0.3,0),'Mission computer: navigation, mission logic, sensor fusion, data logging and AI monitoring.');
+  P('ESP32 controller',at(box(0.05,0.004,0.028,mat(0x1d1f22)),0.11,0.02,0),V(0,0.24,0.07),'Real-time I/O: PWM to ESCs and fin servos, battery ADC, leak detection, watchdog.');
+  P('ESC / motor driver stack',at(box(0.06,0.02,0.04,mat(0x3b5bdb)),0.12,-0.035,0),V(0,-0.24,0),'Three bidirectional brushless ESCs (30 A class) for main and vertical thrusters.');
+  P('IMU (BNO055)',at(box(0.02,0.004,0.02,mat(0x7c3aed)),0.27,-0.03,0.02),V(0,-0.2,0.08),'9-axis IMU mounted near the centre of buoyancy for attitude and heading.');
+  P('Battery compartment',at(cylX(R,0.28,mat(DK,{metalness:.6,roughness:.4,transparent:true,opacity:1})),-0.11,0,0),V(-0.2,0,0),'Second pressure housing (aluminium tube) isolating the Li-ion pack from the electronics. Separate vent and leak sensor.',true);
+  P('Battery pack 4S Li-ion',at(box(0.22,0.07,0.07,mat(0x2563eb)),-0.11,0,0),V(-0.2,-0.26,0),'4S2P 18650 Li-ion, 14.8 V nominal, ~6.8 Ah (≈100 Wh) with BMS. Positioned low and central for stability.');
+  P('Rear section',at(cylX(R,0.12,mat(Y)),-0.31,0,0),V(-0.34,0,0),'Free-flooding rear section carrying fin servos and thruster cable routing.');
+  const tc=new THREE.Mesh(new THREE.ConeGeometry(R,0.2,28),mat(Y));tc.rotation.z=Math.PI/2;tc.position.x=-0.47;
+  P('Tail cone',tc,V(-0.44,0,0),'Tapered tail cone (≈20° half-angle) for flow recovery to the thruster.');
+  const th=new THREE.Group();th.add(cylX(0.055,0.06,mat(0x30373e,{side:THREE.DoubleSide}),28,true));th.add(at(cylX(0.022,0.05,mat(0x555c63,{metalness:.6})),0.03,0,0));const pr=prop(0.045,3,0xd5d9dd);th.add(pr);spin.push(pr);th.position.x=-0.6;
+  P('Main thruster and propeller',th,V(-0.58,0,0),'Ducted brushless thruster (T200 class): surge propulsion. 3-blade propeller inside a Kort-style duct.');
+  const fn=['upper rudder','starboard elevator','lower rudder','port elevator'];
+  for(let k=0;k<4;k++){const a=k*Math.PI/2;const fin=box(0.09,0.075,0.006,mat(0xe5e7ea));fin.rotation.x=a;fin.position.set(-0.43,Math.cos(a)*(R+0.035),Math.sin(a)*(R+0.035));
+    P('Control fin — '+fn[k],fin,V(-0.3,Math.cos(a)*0.16,Math.sin(a)*0.16),'Cruciform control surface (NACA 0012 section, 90 × 75 mm). Driven by a waterproof servo for pitch/yaw control.');}
+  [1,-1].forEach(s=>{const pod=new THREE.Group();const hs=new THREE.Mesh(new THREE.CylinderGeometry(0.028,0.028,0.07,20,1,true),mat(0x30373e,{side:THREE.DoubleSide}));hs.position.z=s*(R+0.045);pod.add(hs);
+    const pp=prop(0.024,3,0xd5d9dd);const pw=new THREE.Group();pw.rotation.z=Math.PI/2;pw.add(pp);pw.position.z=s*(R+0.045);pod.add(pw);spin.push(pp);
+    const py=box(0.04,0.01,0.045,mat(0x6b7280));py.position.z=s*(R+0.012);pod.add(py);pod.position.x=0.26;
+    P('Vertical thruster — '+(s>0?'starboard':'port'),pod,V(0,0,s*0.22),'Small vertical thruster on a pylon for depth hold and hover at low speed.');});
+  P('Pressure / depth sensor',at(new THREE.Mesh(new THREE.CylinderGeometry(0.009,0.009,0.02,14),mat(0xc7cdd3,{metalness:.7})),-0.22,R+0.008,0),V(0,0.18,0),'MS5837-30BA pressure sensor, potted into the battery-housing cap. 0–30 bar, ~2 mm depth resolution.');
+  P('Acoustic modem transducer',at(new THREE.Mesh(new THREE.CylinderGeometry(0.022,0.022,0.05,20),mat(0x1f2937)),-0.3,R+0.025,0),V(0,0.24,0),'Omni-directional acoustic transducer for ASV–AUV telemetry and commands.');
+  P('Surfacing RF / GPS antenna',at(new THREE.Mesh(new THREE.CylinderGeometry(0.006,0.006,0.14,8),mat(0x111827)),-0.34,R+0.07,0.035),V(0,0.3,0.05),'Short mast for GPS fix and radio when the AUV is surfaced.');
+  P('Doppler velocity log (DVL)',at(new THREE.Mesh(new THREE.CylinderGeometry(0.035,0.035,0.03,24),mat(0x1f2937)),-0.17,-(R+0.012),0),V(0,-0.26,0),'Down-looking 4-beam DVL (A50 class): velocity over ground for dead-reckoning between acoustic fixes, bottom lock up to ~40 m altitude.');
+  P('Drop weight + burn-wire release',at(box(0.08,0.02,0.035,mat(0x52525b,{metalness:.6})),0.05,-(R+0.012),0),V(0,-0.32,0),'0.5 kg emergency drop weight held by a nichrome burn-wire. Released on critical battery, leak or lost-link timeout so the vehicle always surfaces.');
+  P('Strobe / recovery beacon',at(new THREE.Mesh(new THREE.CylinderGeometry(0.01,0.01,0.03,12),mat(0xfafafa,{emissive:0x335566})),-0.33,R+0.016,-0.03),V(0,0.2,-0.1),'LED strobe that switches on at the surface for visual recovery.');
+  P('Magnetic kill switch',at(box(0.03,0.02,0.012,mat(0xdc2626)),-0.28,0,-(R+0.006)),V(0,0,-0.22),'External magnetic key over an internal reed switch driving a 30 A MOSFET power switch — power on/off without opening a housing.');
+  P('Lead ballast — front bay',at(box(0.17,0.028,0.09,mat(0x6b7280,{metalness:.8,roughness:.4})),0.44,-0.045,0),V(0.22,-0.24,0),'Cast lead block in the bottom of the free-flooding bay. Its mass is solved in the buoyancy budget for 1.5 % positive buoyancy and zero pitch trim.');
+  P('Lead ballast — rear section',at(box(0.1,0.028,0.09,mat(0x6b7280,{metalness:.8,roughness:.4})),-0.31,-0.045,0),V(-0.3,-0.24,0),'Rear ballast block; front/rear split sets the pitch trim (see buoyancy budget). Placed low to keep the centre of gravity below the centre of buoyancy.');
+  P('Leak sensors',at(box(0.02,0.003,0.015,mat(0x0ea5e9)),0.06,-0.066,0),V(0,-0.16,-0.06),'Conductive-pad leak sensors at the low point of each dry housing, wired to ESP32 inputs.');
+  P('Vent / vacuum-test plug',at(cylX(0.008,0.02,mat(0xc0c7cf,{metalness:.8})),0.015,0.045,0.03),V(-0.12,0.14,0),'M10 vent plug used to pull a vacuum test (−0.3 bar held for 15 min) before every dive.');
+  if(payload==='ctd'){const c=new THREE.Group();c.add(at(cylX(0.012,0.12,mat(0x334155,{metalness:.5})),0,0,0));c.add(at(box(0.03,0.02,0.02,mat(AL)),-0.03,-0.012,0));c.position.set(0.46,R+0.022,0);
+    P('CTD probe (conductivity + temperature)',c,V(0.12,0.2,0),'Conductivity cell (salinity) with co-located temperature element, mounted forward on top to sample undisturbed water.');}
+  if(payload==='do'){const c=new THREE.Group();const o=new THREE.Mesh(new THREE.CylinderGeometry(0.013,0.013,0.08,16),mat(0x0f766e));o.rotation.z=-0.6;c.add(o);c.position.set(0.45,-(R+0.025),0);
+    P('Dissolved-oxygen probe',c,V(0.12,-0.2,0),'Galvanic/optical DO probe angled down-forward, with flow past the membrane from forward motion.');
+    P('Temperature probe (DS18B20)',at(cylX(0.006,0.06,mat(0x9ca3af,{metalness:.7})),0.42,0,R+0.01),V(0.06,0,0.18),'Stainless-sheathed DS18B20 for DO temperature compensation.');}
+  if(payload==='sonar'){P('Echosounder / altimeter sonar',at(new THREE.Mesh(new THREE.CylinderGeometry(0.03,0.03,0.025,24),mat(0x111827)),0.45,-(R+0.012),0),V(0.06,-0.22,0),'Down-looking single-beam echosounder (Ping2 class) giving altitude and bottom depth.');
+    const ss=new THREE.Group();[1,-1].forEach(s=>ss.add(at(box(0.25,0.02,0.006,mat(0x374151)),0,-0.03,s*(R+0.003))));ss.position.x=-0.1;
+    P('Side-scan transducer staves (concept)',ss,V(0,-0.14,0),'Port and starboard side-looking staves for swath coverage — conceptual, for mapping width.');}
+  return{group:g,parts,spin};
+}
+function solarTex(){const c=document.createElement('canvas');c.width=256;c.height=192;const x=c.getContext('2d');x.fillStyle='#16304f';x.fillRect(0,0,256,192);x.strokeStyle='#5f86ad';x.lineWidth=2;for(let i=0;i<=8;i++){x.beginPath();x.moveTo(i*32,0);x.lineTo(i*32,192);x.stroke();}for(let j=0;j<=6;j++){x.beginPath();x.moveTo(0,j*32);x.lineTo(256,j*32);x.stroke();}const t=new THREE.CanvasTexture(c);return t;}
+function buildASV(withGhost){
+  const g=new THREE.Group(),parts=[],spin=[];
+  function P(name,obj,ex,info,shell){obj.userData.base=obj.position.clone();obj.userData.ex=ex;g.add(obj);parts.push({name,obj,ex,info,shell:!!shell});return obj;}
+  [1,-1].forEach(s=>{const h=new THREE.Group();h.add(at(cylX(0.11,1.0,mat(0xeef2f6)),-0.05,0,0));
+    const bow=new THREE.Mesh(new THREE.ConeGeometry(0.11,0.35,28),mat(0xeef2f6));bow.rotation.z=-Math.PI/2;bow.position.x=0.625;h.add(bow);
+    const st=new THREE.Mesh(new THREE.ConeGeometry(0.11,0.12,28),mat(0xeef2f6));st.rotation.z=Math.PI/2;st.position.x=-0.61;h.add(st);
+    h.add(at(cylX(0.1125,0.05,mat(0xe8662c)),0.3,0,0));h.position.z=s*0.42;
+    P((s>0?'Starboard':'Port')+' hull',h,V(0,0,s*0.38),'Catamaran demi-hull: Ø220 mm, 1.47 m LOA, rotomoulded HDPE with foam-filled bow compartment. Wide hull spacing gives high roll stability for the docking cradle.');});
+  const deck=new THREE.Group();deck.add(box(1.25,0.03,0.98,mat(0x56616c,{metalness:.5})));
+  [[0.35,0.42],[-0.35,0.42],[0.35,-0.42],[-0.35,-0.42]].forEach(([x,z])=>deck.add(at(box(0.04,0.14,0.04,mat(0x56616c,{metalness:.5})),x,-0.085,z)));deck.position.y=0.23;
+  P('Connecting deck and cross-beams',deck,V(0,0.18,0),'Aluminium 6061 deck plate on four struts bridging the hulls; carries enclosure, battery, solar frame and cradle.');
+  P('Waterproof electronics enclosure',at(box(0.38,0.16,0.28,mat(0xdfe5eb,{transparent:true,opacity:1})),0.1,0.325,0),V(0,0.5,0),'IP67 polycarbonate box with cable glands; holds Raspberry Pi, ESP32, PDB, LoRa radio and IMU.',true);
+  P('Raspberry Pi 4B',at(box(0.085,0.012,0.056,mat(0x1f7a3a)),0.06,0.27,-0.06),V(0,0.8,-0.05),'Mission coordinator: AUV tasking, telemetry aggregation, AI monitor, shore link.');
+  P('ESP32 controller',at(box(0.05,0.012,0.028,mat(0x1d1f22)),0.18,0.27,0.07),V(0.05,0.78,0.08),'Thruster PWM, LoRa SPI radio, power monitoring, winch/latch control.');
+  P('Power distribution board',at(box(0.08,0.012,0.06,mat(0xb91c1c)),0.0,0.27,0.07),V(-0.05,0.72,0.08),'Fused distribution: 14.8 V propulsion bus, 5 V logic bus via buck converter, current shunt.');
+  P('Battery box 4S Li-ion',at(box(0.3,0.12,0.22,mat(0x26303a)),-0.36,0.305,0),V(-0.22,0.38,0),'4S Li-ion, 14.8 V, ~20 Ah (≈300 Wh) with BMS, in a sealed box low on the deck.');
+  const sol=new THREE.Group();[[0.4,0.3],[-0.4,0.3],[0.4,-0.3],[-0.4,-0.3]].forEach(([x,z])=>sol.add(at(new THREE.Mesh(new THREE.CylinderGeometry(0.008,0.008,0.38,8),mat(0x9aa6b2,{metalness:.7})),x,-0.2,z)));
+  const pan=box(0.95,0.025,0.68,new THREE.MeshStandardMaterial({color:0xffffff,map:solarTex(),roughness:.3,metalness:.3}));sol.add(pan);sol.position.y=0.63;
+  P('Solar panel (100 W) and frame',sol,V(0,0.62,0),'Monocrystalline 100 W panel on a tubular frame, feeding an MPPT charger to extend surface endurance.');
+  const gps=new THREE.Group();gps.add(at(new THREE.Mesh(new THREE.CylinderGeometry(0.01,0.01,0.36,8),mat(0x9aa6b2)),0,0,0));gps.add(at(new THREE.Mesh(new THREE.CylinderGeometry(0.045,0.045,0.022,24),mat(0xf3f4f6)),0,0.19,0));gps.position.set(0.55,0.42,0.33);
+  P('GPS antenna mast',gps,V(0.25,0.55,0.2),'Active GNSS patch antenna (u-blox NEO-M8N receiver) on a 0.36 m mast clear of the solar panel.');
+  const ant=new THREE.Group();ant.add(at(new THREE.Mesh(new THREE.CylinderGeometry(0.006,0.006,0.55,8),mat(0x111827)),0,0,0));ant.add(at(new THREE.Mesh(new THREE.CylinderGeometry(0.02,0.02,0.04,12),mat(0x374151)),0,-0.27,0));ant.position.set(0.55,0.5,-0.33);
+  P('LoRa / LTE telemetry antenna',ant,V(0.25,0.55,-0.2),'Whip antenna for the shore link (LoRa 433 MHz primary, LTE secondary).');
+  [1,-1].forEach(s=>{const m=new THREE.Group();m.add(cylX(0.035,0.13,mat(0x30373e,{metalness:.5})));m.add(at(box(0.03,0.1,0.02,mat(0x56616c)),0.02,0.07,0));const pp=prop(0.06,3,0xd5d9dd);pp.position.x=-0.08;m.add(pp);spin.push(pp);m.position.set(-0.62,-0.15,s*0.42);
+    P('Propulsion motor — '+(s>0?'starboard':'port'),m,V(-0.3,-0.25,s*0.12),'Brushless thruster under each hull stern. Differential thrust gives yaw control without a rudder.');});
+  const cr=new THREE.Group();[0.09,-0.09].forEach(z=>cr.add(at(box(0.9,0.02,0.02,mat(0xf59e0b)),0,0.03,z)));[-0.35,0,0.35].forEach(x=>{cr.add(at(box(0.02,0.18,0.02,mat(0xf59e0b)),x,0.12,0.09));cr.add(at(box(0.02,0.18,0.02,mat(0xf59e0b)),x,0.12,-0.09));});
+  const fun=new THREE.Mesh(new THREE.CylinderGeometry(0.15,0.085,0.18,24,1,true),mat(0xf59e0b,{side:THREE.DoubleSide,transparent:true,opacity:.85}));fun.rotation.z=-Math.PI/2;fun.position.set(0.55,0.1,0);cr.add(fun);
+  const dr=new THREE.Mesh(new THREE.CylinderGeometry(0.04,0.04,0.12,16),mat(0x374151));dr.rotation.x=Math.PI/2;dr.position.set(-0.2,0.17,0);cr.add(dr);
+  if(withGhost){const gh=cylX(0.075,1.15,mat(0xf1c232,{transparent:true,opacity:.28,depthWrite:false}));gh.position.y=0.11;cr.add(gh);}
+  P('AUV docking cradle',cr,V(0,-0.42,0),'Single-bay recovery cradle between the hulls: forward guide funnel, two rails and a winch drum. AUVs dock one at a time for recovery, data offload and charging (concept).');
+  P('Topside acoustic transducer',at(new THREE.Mesh(new THREE.CylinderGeometry(0.03,0.03,0.3,16),mat(0x1f2937)),-0.55,0.05,0),V(-0.2,-0.45,0),'Hull-mounted acoustic modem transducer reaching below the waterline for ASV–AUV links.');
+  P('Sea-surface temperature probe',at(new THREE.Mesh(new THREE.CylinderGeometry(0.007,0.007,0.1,8),mat(0x9ca3af,{metalness:.7})),0.2,-0.14,0.42),V(0,-0.25,0.2),'DS18B20 probe through the starboard hull for sea-surface temperature.');
+  const us=new THREE.Group();us.add(at(new THREE.Mesh(new THREE.CylinderGeometry(0.012,0.012,0.4,10),mat(0x9aa6b2,{metalness:.7})),0,0.05,0));us.add(at(new THREE.Mesh(new THREE.SphereGeometry(0.045,18,12),mat(0xf97316)),0,-0.17,0));us.add(at(box(0.14,0.02,0.05,mat(0x56616c,{metalness:.5})),-0.06,0.24,0));us.position.set(0.72,-0.02,0);
+  P('USBL transceiver head',us,V(0.32,-0.3,0),'Ultra-short-baseline acoustic positioning head on a retractable pole below the bow. Gives range and bearing to each AUV so their positions can be geo-referenced with the ASV GPS fix.');
+  const nl=new THREE.Group();nl.add(at(new THREE.Mesh(new THREE.SphereGeometry(0.02,12,8),mat(0xef4444,{emissive:0x7f1d1d})),0.45,0.13,-0.42));nl.add(at(new THREE.Mesh(new THREE.SphereGeometry(0.02,12,8),mat(0x22c55e,{emissive:0x14532d})),0.45,0.13,0.42));
+  P('Navigation lights',nl,V(0.1,0.22,0),'Port (red) and starboard (green) LED sidelights for visibility to other vessels; switched by the ESP32.');
+  const es=new THREE.Group();es.add(box(0.06,0.02,0.06,mat(0xfacc15)));es.add(at(new THREE.Mesh(new THREE.CylinderGeometry(0.025,0.025,0.03,20),mat(0xdc2626)),0,0.025,0));es.position.set(0.38,0.255,-0.4);
+  P('Emergency stop button',es,V(0,0.3,-0.12),'Latching mushroom e-stop that opens the 40 A propulsion contactor; logic stays powered so telemetry continues.');
+  const cm=new THREE.Group();cm.add(box(0.06,0.05,0.09,mat(0x1f2937)));cm.add(at(cylX(0.016,0.02,mat(0x0f172a,{metalness:.8})),0.035,0,0));cm.position.set(0.58,0.285,0);
+  P('Forward camera + 2D LiDAR',cm,V(0.3,0.32,0),'Obstacle detection for surface navigation near shore, buoys and other craft.');
+  const le=new THREE.Group();[[0.55,0.44],[0.55,-0.44],[-0.55,0.44],[-0.55,-0.44]].forEach(([x,z])=>le.add(at(new THREE.Mesh(new THREE.TorusGeometry(0.022,0.005,8,16),mat(0xc0c7cf,{metalness:.9})),x,0.27,z)));
+  P('Lifting eyes (4-point sling)',le,V(0,0.18,0),'A4 stainless eye bolts on the deck corners for crane launch and recovery; sling legs sized for ≥5× the loaded mass.');
+  return{group:g,parts,spin};
+}
+
+/* ================================================================
+   View: Ocean simulation
+================================================================ */
+const SIM={ready:false,layers:{paths:true,trails:true,links:true,labels:true,sonar:true,water:true},follow:null};
+function initSim(){
+  const wrap=$('#simWrap');
+  const R=new THREE.WebGLRenderer({antialias:true});R.setPixelRatio(Math.min(2,window.devicePixelRatio||1));wrap.insertBefore(R.domElement,wrap.firstChild);
+  const scene=new THREE.Scene();scene.background=new THREE.Color(0x06243a);scene.fog=new THREE.FogExp2(0x0a3352,0.0036);
+  const cam=new THREE.PerspectiveCamera(50,1,0.5,3000);
+  const ctl=new THREE.OrbitControls(cam,R.domElement);ctl.enableDamping=true;ctl.maxDistance=650;ctl.minDistance=4;
+  Object.assign(SIM,{R,scene,cam,ctl});
+  scene.add(new THREE.HemisphereLight(0xaee0ff,0x0b2233,0.95));
+  const sun=new THREE.DirectionalLight(0xffffff,0.85);sun.position.set(80,200,60);scene.add(sun);
+  // terrain
+  const tg=new THREE.PlaneGeometry(200,200,120,120);tg.rotateX(-Math.PI/2);
+  const tp=tg.attributes.position;const tc=new Float32Array(tp.count*3);
+  for(let i=0;i<tp.count;i++){const x=tp.getX(i),z=tp.getZ(i);const y=seabed(x,z);tp.setY(i,y);const t=clamp((-y-16)/24,0,1);const c=[0.78-0.45*t,0.7-0.38*t,0.54-0.18*t];tc[i*3]=c[0];tc[i*3+1]=c[1];tc[i*3+2]=c[2];}
+  tg.setAttribute('color',new THREE.BufferAttribute(tc,3));tg.computeVertexNormals();
+  scene.add(new THREE.Mesh(tg,new THREE.MeshStandardMaterial({vertexColors:true,roughness:.95,metalness:0})));
+  // survey box edges
+  const bx=new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(200,40,200)),new THREE.LineBasicMaterial({color:0x4fa3c7,transparent:true,opacity:.25}));bx.position.y=-20;scene.add(bx);
+  // water
+  const wg=new THREE.PlaneGeometry(240,240,60,60);wg.rotateX(-Math.PI/2);
+  const water=new THREE.Mesh(wg,new THREE.MeshStandardMaterial({color:0x1f7fb3,transparent:true,opacity:.42,roughness:.15,metalness:.1,side:THREE.DoubleSide,depthWrite:false}));scene.add(water);SIM.water=water;
+  // depth ruler
+  const rul=new THREE.Group();const rx=-104,rz=-104;
+  const pts=[V(rx,0,rz),V(rx,-40,rz)];for(let d=0;d<=40;d+=5){pts.push(V(rx,-d,rz),V(rx+(d%10===0?4:2),-d,rz));}
+  rul.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(pts),new THREE.LineBasicMaterial({color:0xffffff})));
+  for(let d=0;d<=40;d+=10){const s=textSprite(d===0?'0 m surface':d===40?'40 m max depth':d+' m',{h:2.6,fg:'#ffffff',bg:'rgba(3,17,29,.6)',depthTest:false});s.position.set(rx+6+s.scale.x/2,-d,rz);rul.add(s);}
+  scene.add(rul);
+  const mx=new THREE.Mesh(new THREE.PlaneGeometry(200,200),new THREE.MeshBasicMaterial({color:0xff6b6b,transparent:true,opacity:.05,side:THREE.DoubleSide,depthWrite:false}));mx.rotation.x=-Math.PI/2;mx.position.y=-40;scene.add(mx);
+  // marine snow
+  const sn=new Float32Array(900*3);for(let i=0;i<900;i++){sn[i*3]=(Math.random()-.5)*200;sn[i*3+1]=-Math.random()*40;sn[i*3+2]=(Math.random()-.5)*200;}
+  const sg=new THREE.BufferGeometry();sg.setAttribute('position',new THREE.BufferAttribute(sn,3));
+  SIM.snow=new THREE.Points(sg,new THREE.PointsMaterial({color:0xcfe9ff,size:0.35,transparent:true,opacity:.55}));scene.add(SIM.snow);
+  // robots
+  SIM.objs=S.robots.map(r=>{const m=r.kind==='asv'?buildASV(false):buildAUV(r.payload);m.group.scale.setScalar(4);scene.add(m.group);return m;});
+  // paths
+  SIM.paths=S.robots.map(r=>{const pts=r.kind==='asv'?r.path:[S.robots[0].pos.clone().add(dockOff(r))].concat(r.path);const geo=new THREE.BufferGeometry().setFromPoints(pts);
+    const l=new THREE.Line(geo,new THREE.LineDashedMaterial({color:COL[r.id],dashSize:2,gapSize:1.6,transparent:true,opacity:.55}));l.computeLineDistances();scene.add(l);return l;});
+  SIM.trails=S.robots.map(r=>{const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.BufferAttribute(new Float32Array(4000*3),3));geo.setDrawRange(0,0);
+    const l=new THREE.Line(geo,new THREE.LineBasicMaterial({color:COL[r.id]}));l.frustumCulled=false;scene.add(l);return l;});
+  SIM.links=S.robots.slice(1).map(()=>{const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.BufferAttribute(new Float32Array(6),3));const l=new THREE.Line(geo,new THREE.LineBasicMaterial({color:0x3fd09a,transparent:true,opacity:.6}));l.frustumCulled=false;scene.add(l);return l;});
+  const cone=new THREE.Mesh(new THREE.ConeGeometry(1,1,32,1,true),new THREE.MeshBasicMaterial({color:0xad7bff,transparent:true,opacity:.14,side:THREE.DoubleSide,depthWrite:false}));scene.add(cone);SIM.cone=cone;
+  SIM.fxPool=[];for(let i=0;i<40;i++){const s=new THREE.Mesh(new THREE.SphereGeometry(0.7,10,8),new THREE.MeshBasicMaterial({color:0x3fd09a,fog:false}));s.visible=false;scene.add(s);SIM.fxPool.push(s);}
+  // labels
+  const ovl=$('#simOvl');SIM.lbls=S.robots.map(r=>{const d=document.createElement('div');d.className='lbl';ovl.appendChild(d);return d;});
+  SIM.resetVisuals=function(){SIM.trails.forEach(t=>t.geometry.setDrawRange(0,0));S.robots.forEach(r=>r.trailDirty=true);};
+  setCam('overview');
+  new ResizeObserver(()=>resizeR(R,cam,wrap)).observe(wrap);resizeR(R,cam,wrap);
+  SIM.ready=true;
+}
+function resizeR(R,cam,wrap){const w=wrap.clientWidth,h=wrap.clientHeight;if(!w||!h)return;R.setSize(w,h,false);cam.aspect=w/h;cam.updateProjectionMatrix();}
+function waveY(x,z,t){return 0.22*Math.sin(x*0.08+t*1.1)+0.18*Math.cos(z*0.1+t*1.3);}
+function setCam(m){
+  if(!SIM.ready)return;SIM.follow=null;
+  const c=SIM.cam,t=SIM.ctl.target;
+  if(m==='overview'){c.position.set(150,75,165);t.set(0,-16,0);}
+  if(m==='under'){c.position.set(-60,-22,95);t.set(0,-24,0);}
+  if(m==='top'){c.position.set(0,260,0.1);t.set(0,-20,0);}
+  if(m==='side'){c.position.set(0,-18,230);t.set(0,-18,0);}
+  SIM.ctl.update();$$('[data-cam]').forEach(b=>b.classList.toggle('on',b.dataset.cam===m));$('#hudFollow').textContent='Camera: '+({overview:'overview',under:'underwater',top:'top-down',side:'side section'}[m]);
+}
+function followRobot(r){if(!SIM.ready)return;SIM.follow=r;const p=r.pos;SIM.cam.position.set(p.x+28,p.y+14,p.z+28);SIM.ctl.target.copy(p);SIM.ctl.update();$$('[data-cam]').forEach(b=>b.classList.remove('on'));$('#hudFollow').textContent='Camera: following '+r.name;}
+const _v=new THREE.Vector3();
+function renderSim(rdt){
+  const t=performance.now()/1000;const L=SIM.layers;
+  // water waves
+  SIM.water.visible=L.water;
+  if(L.water){const p=SIM.water.geometry.attributes.position;for(let i=0;i<p.count;i++)p.setY(i,waveY(p.getX(i),p.getZ(i),t));p.needsUpdate=true;}
+  SIM.snow.position.y=-((t*0.2)%2);
+  S.robots.forEach((r,i)=>{
+    const o=SIM.objs[i];o.group.position.copy(r.pos);
+    if(r.kind==='asv'){o.group.position.y=waveY(r.pos.x,r.pos.z,t)*0.6+0.05;o.group.rotation.set(Math.sin(t*1.2)*0.03,r.yaw,Math.sin(t*0.9)*0.02);}
+    else o.group.rotation.set(0,r.yaw,r.pitch);
+    const run=S.playing&&r.enabled&&r.phase!=='docked'&&r.battery>0;
+    o.spin.forEach(s=>{if(run)s.rotation.x+=rdt*25;});
+    // trail
+    const tl=SIM.trails[i];tl.visible=L.trails;
+    if(r.trailDirty){const a=tl.geometry.attributes.position;const n=Math.min(r.trail.length,4000);for(let k=0;k<n;k++){a.array[k*3]=r.trail[k][0];a.array[k*3+1]=r.trail[k][1];a.array[k*3+2]=r.trail[k][2];}a.needsUpdate=true;tl.geometry.setDrawRange(0,n);r.trailDirty=false;}
+    SIM.paths[i].visible=L.paths;
+    // label
+    const lb=SIM.lbls[i];
+    if(L.labels){_v.copy(r.pos);_v.y+=r.kind==='asv'?6:3.2;_v.project(SIM.cam);
+      if(_v.z<1&&_v.z>-1){lb.style.display='block';lb.style.left=((_v.x+1)/2*100)+'%';lb.style.top=((1-_v.y)/2*100)+'%';
+        const st=statusOf(r);lb.innerHTML=`<i style="background:${COL[r.id]}"></i>${r.name} · ${r.kind==='asv'?'surface':f(-r.pos.y,1)+' m'} · ${st[0]}`;}else lb.style.display='none';}
+    else lb.style.display='none';
+  });
+  // acoustic links
+  const asv=S.robots[0];
+  SIM.links.forEach((l,k)=>{const r=S.robots[k+1];const show=L.links&&r.phase!=='docked';l.visible=show;if(!show)return;
+    const a=l.geometry.attributes.position.array;a[0]=asv.pos.x;a[1]=-1;a[2]=asv.pos.z;a[3]=r.pos.x;a[4]=r.pos.y;a[5]=r.pos.z;l.geometry.attributes.position.needsUpdate=true;
+    l.material.color.set(r.link.q>=0.6?0x3fd09a:r.link.q>=0.15?0xf2b247:0xff6b6b);l.material.opacity=0.35+0.3*Math.abs(Math.sin(t*2+k));});
+  // packet fx
+  SIM.fxPool.forEach(s=>s.visible=false);
+  S.fx=S.fx.filter(e=>{e.age+=rdt;return e.age<0.9;});
+  if(L.links)S.fx.forEach((e,k)=>{const s=SIM.fxPool[k];if(!s)return;const r=e.r;const p=Math.min(1,e.age/0.9);const stop=e.ok?1:0.55;const q=Math.min(p,stop);
+    s.position.set(r.pos.x+(asv.pos.x-r.pos.x)*q,r.pos.y+(-1-r.pos.y)*q,r.pos.z+(asv.pos.z-r.pos.z)*q);s.material.color.set(e.ok?0x7dffcf:0xff6b6b);s.visible=!(!e.ok&&p>0.7);});
+  // sonar cone
+  const a3=S.robots[3];const alt=a3.pos.y-seabed(a3.pos.x,a3.pos.z);
+  SIM.cone.visible=L.sonar&&a3.phase==='mission'&&a3.enabled&&alt<20&&!(a3.faults.sonar&&a3.faults.sonar.n>0);
+  if(SIM.cone.visible){const rad=Math.min(13,1.6+alt*2.1);SIM.cone.scale.set(rad,alt,rad);SIM.cone.position.set(a3.pos.x,a3.pos.y-alt/2,a3.pos.z);}
+  // follow
+  if(SIM.follow){const tg=SIM.follow.pos;const d=tg.clone().sub(SIM.ctl.target);SIM.ctl.target.add(d);SIM.cam.position.add(d);}
+  SIM.ctl.update();
+  SIM.R.render(SIM.scene,SIM.cam);
+}
+
+/* ================================================================
+   View: Mechanical inspection
+================================================================ */
+const MECH={ready:false,model:'asv',sel:null,explode:0,target:0,labels:true,dims:true,cut:false,spin:false};
+const DIMS={
+  asv:[['Length overall','1.47 m'],['Beam overall','1.06 m'],['Hull diameter','0.22 m'],['Hull spacing (c/c)','0.84 m'],['Height to antenna tip','0.93 m'],['Design draft','≈0.11 m'],['Mass (lightship)','<span id="dimMass">—</span>'],['Battery','4S Li-ion ≈300 Wh'],['Solar','100 W']],
+  auv:[['Length overall','1.26 m'],['Hull diameter','150 mm'],['Fin span','0.30 m'],['Mass in air (with ballast)','<span id="dimMass">—</span>'],['Trim','≈1–2 % positive buoyancy'],['Design depth','40 m (6 mm acrylic wall, untested)'],['Cruise speed','1.3–1.5 m/s'],['Battery','4S Li-ion ≈100 Wh']]
+};
+function initMech(){
+  const wrap=$('#mechWrap');
+  const R=new THREE.WebGLRenderer({antialias:true,alpha:true});R.setPixelRatio(Math.min(2,window.devicePixelRatio||1));R.setClearColor(0x000000,0);wrap.insertBefore(R.domElement,wrap.firstChild);
+  const scene=new THREE.Scene();const cam=new THREE.PerspectiveCamera(40,1,0.01,50);const ctl=new THREE.OrbitControls(cam,R.domElement);ctl.enableDamping=true;
+  scene.add(new THREE.HemisphereLight(0xffffff,0x334455,0.85));const d1=new THREE.DirectionalLight(0xffffff,0.9);d1.position.set(3,5,4);scene.add(d1);const d2=new THREE.DirectionalLight(0x9fd3ff,0.35);d2.position.set(-4,2,-3);scene.add(d2);
+  const grid=new THREE.GridHelper(4,40,0x3c5a72,0x22384a);grid.position.y=-0.5;scene.add(grid);MECH.grid=grid;
+  Object.assign(MECH,{R,scene,cam,ctl,wrap});
+  const ray=new THREE.Raycaster(),mp=new THREE.Vector2();let down=null;
+  R.domElement.addEventListener('pointerdown',e=>{down=[e.clientX,e.clientY];});
+  R.domElement.addEventListener('pointerup',e=>{if(!down||Math.hypot(e.clientX-down[0],e.clientY-down[1])>5)return;const rc=R.domElement.getBoundingClientRect();mp.x=(e.clientX-rc.left)/rc.width*2-1;mp.y=-(e.clientY-rc.top)/rc.height*2+1;ray.setFromCamera(mp,cam);
+    const hits=ray.intersectObject(MECH.cur.group,true);for(const h of hits){let o=h.object;while(o&&!MECH.cur.parts.find(p=>p.obj===o))o=o.parent;if(o){const p=MECH.cur.parts.find(p=>p.obj===o);if(p.shell&&MECH.cut)continue;selectPart(p);return;}}selectPart(null);});
+  new ResizeObserver(()=>resizeR(R,cam,wrap)).observe(wrap);resizeR(R,cam,wrap);
+  MECH.ready=true;loadModel('asv');
+}
+function loadModel(m){
+  MECH.model=m;$$('#mechModel button').forEach(b=>b.classList.toggle('on',b.dataset.m===m));
+  if(MECH.cur){MECH.scene.remove(MECH.cur.group);MECH.scene.remove(MECH.dimG);}
+  const cur=m==='asv'?buildASV(true):buildAUV(DEFS.find(d=>d.id===m).payload);MECH.cur=cur;MECH.scene.add(cur.group);
+  cur.parts.forEach(p=>p.obj.traverse(o=>{if(o.isMesh){o.userData.em=o.material.emissive.getHex();o.userData.op=o.material.opacity;o.userData.side=o.material.side;}}));
+  // dimension lines
+  const dg=new THREE.Group();const lm=new THREE.LineBasicMaterial({color:0x7fe3dc});
+  function dim(a,b,label,off){const seg=[a,b];const ex=[a,a.clone().add(off),b,b.clone().add(off)];dg.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(ex.map(p=>p)),new THREE.LineBasicMaterial({color:0x7fe3dc,transparent:true,opacity:.4})));
+    const A=a.clone().add(off),B=b.clone().add(off);dg.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([A,B]),lm));
+    const s=textSprite(label,{h:0.07,fg:'#03141c',bg:'#7fe3dc',depthTest:false});s.position.copy(A.clone().lerp(B,0.5));dg.add(s);}
+  if(m==='asv'){dim(V(-0.67,-0.12,0.53),V(0.8,-0.12,0.53),'LOA 1.47 m',V(0,0,0.2));dim(V(-0.75,-0.12,-0.53),V(-0.75,-0.12,0.53),'Beam 1.06 m',V(-0.15,0,0));dim(V(0.75,-0.11,0.6),V(0.75,0.82,0.6),'Height 0.93 m',V(0.15,0,0));}
+  else{dim(V(-0.63,-0.16,0),V(0.625,-0.16,0),'Length 1.26 m',V(0,-0.12,0));dim(V(0.44,-0.075,0.08),V(0.44,0.075,0.08),'Ø 150 mm',V(0,0,0.18));dim(V(-0.43,-0.2,-0.15),V(-0.43,-0.2,0.15),'Fin span 0.30 m',V(0,-0.08,0));}
+  MECH.dimG=dg;MECH.scene.add(dg);MECH.grid.position.y=m==='asv'?-0.35:-0.3;
+  // labels
+  const ovl=$('#mechOvl');ovl.innerHTML='';MECH.lbls=cur.parts.map(p=>{const d=document.createElement('div');d.className='plbl';d.textContent=p.name;ovl.appendChild(d);return d;});
+  // part list & dims table
+  const pl=$('#partList');pl.innerHTML='';cur.parts.forEach(p=>{const b=document.createElement('button');b.className='btn sm';b.style.cssText='width:100%;text-align:left;margin:2px 0;white-space:normal';b.textContent=p.name;b.onclick=()=>selectPart(p);p.btn=b;pl.appendChild(b);});
+  $('#dimTable').innerHTML=DIMS[m==='asv'?'asv':'auv'].map(([k,v])=>`<tr><td>${k}</td><td><b>${v}</b></td></tr>`).join('');
+  selectPart(null);fitMech();applyCut();applySection();buildAnaInputs();renderAnalysis();
+}
+function fitMech(){const asv=MECH.model==='asv';MECH.cam.position.set(asv?1.9:1.25,asv?1.25:0.62,asv?2.2:1.35);MECH.ctl.target.set(asv?0:-0.02,asv?0.2:0,0);MECH.ctl.update();}
+function selectPart(p){
+  MECH.sel=p;
+  MECH.cur.parts.forEach(q=>{const on=q===p;q.obj.traverse(o=>{if(o.isMesh){o.material.emissive.setHex(on?0x1a6c78:o.userData.em);}});if(q.btn)q.btn.classList.toggle('on',on);});
+  $('#partTitle').textContent=p?p.name:'Select a component';
+  $('#partInfo').innerHTML=p?esc(p.info)+'<br><span class="tagprop" style="margin-top:6px">Proposed</span> <small>Concept geometry — sizing and materials to be confirmed by analysis and testing.</small>':'Click any part in the viewport or the parts list. Use the exploded view slider to separate assemblies.';
+}
+function applySection(){if(!MECH.ready||!MECH.cur)return;MECH.R.clippingPlanes=MECH.section?[new THREE.Plane(new THREE.Vector3(0,0,-1),0)]:[];MECH.cur.group.traverse(o=>{if(o.isMesh){o.material.side=MECH.section?THREE.DoubleSide:(o.userData.side!=null?o.userData.side:THREE.FrontSide);o.material.needsUpdate=true;}});}
+function applyCut(){if(!MECH.cur)return;MECH.cur.parts.forEach(p=>{if(!p.shell)return;p.obj.traverse(o=>{if(o.isMesh){o.material.transparent=true;o.material.opacity=MECH.cut?0.12:o.userData.op;o.material.depthWrite=!MECH.cut&&o.userData.op>=1;o.material.needsUpdate=true;}});});}
+function renderMech(rdt){
+  MECH.explode+=(MECH.target-MECH.explode)*Math.min(1,rdt*8);
+  const k=MECH.explode;
+  MECH.cur.parts.forEach(p=>{p.obj.position.copy(p.obj.userData.base).addScaledVector(p.obj.userData.ex,k);});
+  MECH.cur.spin.forEach(s=>s.rotation.x+=rdt*6);
+  MECH.dimG.visible=MECH.dims&&k<0.05;
+  if(MECH.spin)MECH.cur.group.rotation.y+=rdt*0.3;
+  MECH.ctl.update();MECH.R.render(MECH.scene,MECH.cam);
+  const box=new THREE.Box3();
+  MECH.cur.parts.forEach((p,i)=>{const d=MECH.lbls[i];const show=MECH.labels||p===MECH.sel;if(!show){d.style.display='none';return;}
+    box.setFromObject(p.obj);box.getCenter(_v);_v.project(MECH.cam);if(_v.z>1){d.style.display='none';return;}
+    d.style.display='block';d.style.left=((_v.x+1)/2*100)+'%';d.style.top=((1-_v.y)/2*100)+'%';d.classList.toggle('sel',p===MECH.sel);});
+}
+
+/* ================================================================
+   Engineering analysis (hand calculations)
+================================================================ */
+const ANA={speed:1.4,wall:6,depth:40,docked:false,wind:0,aspeed:1.0};
+const RHO=1025,GRAV=9.81,RHO_PB=11340;
+function n(v,d){return (v==null||!isFinite(v))?'—':v.toFixed(d==null?1:d);}
+function sfTag(sf,ok,warn){const c=sf>=ok?'st-ok':sf>=warn?'st-warn':'st-bad';return `<span class="${c}">${n(sf,2)}</span>`;}
+function auvAnalysis(payload){
+  const ro=0.075,t=ANA.wall/1000,ri=ro-t,D=2*ro,P=RHO*GRAV*ANA.depth;
+  const E=3.0e9,nu=0.37,L=0.30,td=t/D;
+  const Pcr=2.42*E*Math.pow(td,2.5)/(Math.pow(1-nu*nu,0.75)*(L/D-0.45*Math.sqrt(td)));
+  const hoop=P*ro/t/1e6;
+  const ta=0.003,tda=ta/D;const PcrA=2.42*69e9*Math.pow(tda,2.5)/(Math.pow(1-0.33*0.33,0.75)*(0.28/D-0.45*Math.sqrt(tda)));
+  const tc=0.012,a=ro-0.0025;const capS=3*(3+0.33)*P*a*a/(8*tc*tc)/1e6;
+  const acrM=1190*Math.PI*(ro*ro-ri*ri)*L;
+  const pName={ctd:'CTD probe + bracket',do:'DO probe + DS18B20',sonar:'Echosounder + side-scan staves'}[payload];
+  const items=[['Shells: nose, sensor bay, rear, tail (ASA)',1.1,0.05,0],[`Acrylic electronics tube (${ANA.wall} mm wall)`,acrM,0.18,0],['Aluminium end caps ×2 + flanges',0.84,0.18,0],['Electronics stack (Pi, ESP32, ESCs, IMU)',0.45,0.17,-0.01],
+    ['Aluminium battery tube (3 mm) + caps',1.05,-0.11,0],['Battery 4S2P 18650 + BMS',0.5,-0.11,-0.02],['Main thruster (T200 class)',0.344,-0.6,0],['Vertical thrusters ×2',0.3,0.26,0],['Fins ×4 + servos ×2',0.32,-0.43,0],
+    [pName,0.25,0.45,0],['Acoustic modem',0.3,-0.3,0.05],['DVL',0.45,-0.17,-0.07],['Drop weight (releasable)',0.5,0.05,-0.085],['Cabling, penetrators, fasteners',0.6,0,0]];
+  const vols=[['Electronics housing (dry)',Math.PI*ro*ro*0.332,0.18,0],['Battery housing (dry)',Math.PI*ro*ro*0.28,-0.11,0],['Shell material',1.1/1240,0.05,0],['Main thruster',0.00012,-0.6,0],['Vertical thrusters',0.00018,0.26,0],['Fins + servos',0.00015,-0.43,0],['External sensors + transducers',0.0004,0.1,0.02],['DVL',0.0002,-0.17,-0.08],['Drop weight',0.5/RHO_PB,0.05,-0.085]];
+  const M=items.reduce((s,x)=>s+x[1],0),Mx=items.reduce((s,x)=>s+x[1]*x[2],0),My=items.reduce((s,x)=>s+x[1]*x[3],0);
+  const Vt=vols.reduce((s,x)=>s+x[1],0),Vx=vols.reduce((s,x)=>s+x[1]*x[2],0),Vy=vols.reduce((s,x)=>s+x[1]*x[3],0);
+  const tgt=1.015;let mb=(RHO*Vt-tgt*M)/(tgt-RHO/RHO_PB);let foam=0;
+  if(mb<0){foam=(tgt*M-RHO*Vt)/(RHO-tgt*350);mb=0;}
+  const Mt=M+mb+foam*350;const CBx=Vx/Vt;
+  let xb=mb>0?(CBx*Mt-Mx)/mb:0;const xbC=clamp(xb,-0.31,0.44);const front=mb*(xbC+0.31)/0.75,rear=mb-front;
+  const CGx=(Mx+mb*xbC)/Mt,CGy=(My+mb*-0.045)/Mt,CBy=(Vy+(mb/RHO_PB)*-0.045)/(Vt+mb/RHO_PB);
+  const BG=CBy-CGy;const RM10=Mt*GRAV*BG*Math.sin(10*Math.PI/180);
+  const pitchTrim=Math.atan2(CGx-CBx,BG)*180/Math.PI;
+  const v=ANA.speed,A=Math.PI*ro*ro,Cd=0.32;const Dr=0.5*RHO*Cd*A*v*v;const Pp=Dr*v/0.35;
+  const hotel=10.6+6+(payload==='sonar'?5.0:0.3);const Ptot=Pp+hotel;const endur=85/Ptot;const range=v*3600*endur/1000;const Re=v*1.26/1.0e-6;
+  return{P,Pcr,hoop,PcrA,capS,items,mb,foam,front,rear,xb,xbC,Mt,M,CBx,CGx,CGy,CBy,BG,RM10,pitchTrim,Dr,Pp,hotel,Ptot,endur,range,Re,Vt,v,margin:44/Dr};
+}
+function asvAnalysis(){
+  const r=0.11,Vh=Math.PI*r*r*1.0+Math.PI*r*r*(0.35+0.12)/3,Lp=Vh/(Math.PI*r*r),s=0.42;
+  const items=[['Demi-hulls ×2 (HDPE, foam-filled bow)',13,0.11],['Deck plate + struts (6061-T6)',6,0.34],['Electronics enclosure + boards',3.5,0.435],['Battery box 4S 20 Ah',3.2,0.415],['Solar panel 100 W + frame',8.5,0.74],['Thrusters ×2 + mounts',1.2,-0.04],
+    ['Docking cradle + winch',4,0.2],['GPS / telemetry masts',1.0,0.66],['USBL pole + head',1.6,0.0],['Topside acoustic transducer',1.0,0.05],['Camera + LiDAR',0.6,0.4],['E-stop, lights, lifting eyes',0.8,0.3],['Wiring, fasteners, fenders',3,0.3]];
+  const auvM=auvAnalysis('ctd').Mt;if(ANA.docked)items.push(['Docked AUV in cradle',auvM,0.22]);
+  const M=items.reduce((a,x)=>a+x[1],0),KG=items.reduce((a,x)=>a+x[1]*x[2],0)/M;
+  const vol=M/RHO,Ah=vol/2/Lp;
+  const seg=d=>{const h=r-d;return r*r*Math.acos(clamp(h/r,-1,1))-h*Math.sqrt(Math.max(0,r*r-h*h));};
+  let lo=0,hi=2*r;for(let k=0;k<60;k++){const m=(lo+hi)/2;if(seg(m)<Ah)lo=m;else hi=m;}const d=(lo+hi)/2;
+  const h=r-d,th=2*Math.acos(clamp(h/r,-1,1));const ybar=4*r*Math.pow(Math.sin(th/2),3)/(3*(th-Math.sin(th)));const KB=r-ybar;
+  const bw=2*Math.sqrt(Math.max(0,r*r-h*h));const IT=2*(Lp*bw*bw*bw/12+Lp*bw*s*s),IL=2*bw*Lp*Lp*Lp/12;
+  const BM=IT/vol,BML=IL/vol,GM=KB+BM-KG,GML=KB+BML-KG;
+  const reserve=(2*Vh*RHO-M)/M*100,deckClr=0.325-d;
+  const v=ANA.aspeed,Lw=1.47,Re=v*Lw/1.05e-6,Cf=0.075/Math.pow(Math.log10(Re)-2,2),S=2*r*th*Lp,Fn=v/Math.sqrt(GRAV*Lw);
+  const CR=Fn<0.35?0.002:0.002+0.03*(Fn-0.35);const Rw=0.5*RHO*S*v*v*(1.3*Cf+CR);const Ra=0.5*1.2*0.9*0.55*Math.pow(v+ANA.wind,2);const R=Rw+Ra;
+  const Pp=R*v/0.35,hotel=15.3,Pt=Pp+hotel;const endur=255/Pt;const net=Pt-25;
+  const Tn=2*Math.PI*0.4*1.06/Math.sqrt(GRAV*Math.max(GM,0.01));
+  return{items,M,KG,d,KB,BM,GM,GML,reserve,deckClr,Re,Cf,S,Fn,Rw,Ra,R,Pp,hotel,Pt,endur,net,margin:88/R,Tn,auvM,sunk:Ah>=Math.PI*r*r};
+}
+function kv(rows){return '<table class="tbl kpi">'+rows.map(r=>`<tr><td>${r[0]}</td><td><b>${r[1]}</b></td></tr>`).join('')+'</table>';}
+function buildAnaInputs(){
+  const box=$('#anaInputs');if(!box)return;
+  if(MECH.model==='asv'){
+    box.innerHTML=`<label>Speed <input type="range" min="0.3" max="2" step="0.1" value="${ANA.aspeed}" data-a="aspeed"><output>${ANA.aspeed.toFixed(1)} m/s</output></label>
+      <label>Head wind <select data-a="wind"><option value="0">calm</option><option value="5">5 m/s</option><option value="10">10 m/s</option></select></label>
+      <label><input type="checkbox" data-a="docked" ${ANA.docked?'checked':''}> Carrying a docked AUV</label>`;
+    $('select[data-a="wind"]',box).value=String(ANA.wind);
+  }else{
+    box.innerHTML=`<label>Cruise speed <input type="range" min="0.5" max="2" step="0.1" value="${ANA.speed}" data-a="speed"><output>${ANA.speed.toFixed(1)} m/s</output></label>
+      <label>Design depth <input type="range" min="10" max="80" step="5" value="${ANA.depth}" data-a="depth"><output>${ANA.depth} m</output></label>
+      <label>Acrylic wall <select data-a="wall">${[4,5,6,8,10].map(w=>`<option value="${w}" ${w===ANA.wall?'selected':''}>${w} mm</option>`).join('')}</select></label>`;
+  }
+  $$('[data-a]',box).forEach(el=>{el.oninput=el.onchange=()=>{const k=el.dataset.a;ANA[k]=el.type==='checkbox'?el.checked:+el.value;const o=el.parentElement.querySelector('output');if(o)o.textContent=k==='depth'?ANA[k]+' m':ANA[k].toFixed(1)+' m/s';renderAnalysis();};});
+}
+const MATS={
+  auv:[['Electronics housing','Cast acrylic (PMMA) tube, Ø150 mm','Wall from the collapse check; annealed after machining to relieve stress'],['End caps / flanges','6061-T6 aluminium, hard anodised','Double radial O-rings (AS568-2xx, nitrile 70A, ~15–20 % squeeze), silicone grease'],
+    ['Battery housing','6061-T6 tube, 3 mm wall','Separate housing isolates a cell failure from the electronics'],['Penetrators','Potted M10 bolts or compression cable seals','Marine epoxy; each penetrator vacuum-tested'],
+    ['Free-flooding shells','ASA (3D-printed) or GFRP','Drain holes so trapped air does not change trim with depth'],['Fins','CF-nylon, NACA 0012','Stainless shaft through a lip seal into a waterproof servo'],
+    ['Fasteners','A4 (316) stainless','Nylon washers / anti-seize to avoid galvanic attack on aluminium'],['Corrosion','Zinc anodes on aluminium parts','Inspect after each deployment'],['Testing','−0.3 bar vacuum before each dive','One-off chamber test to 1.5× design pressure before sea trials']],
+  asv:[['Hulls','Rotomoulded HDPE or GFRP','Foam-filled bow compartments: hull stays afloat if punctured'],['Deck and struts','6061-T6 plate (5 mm) + 40 × 40 mm extrusion','Bonded and bolted with isolating washers'],
+    ['Electronics enclosure','Polycarbonate, IP67','IP68 M16/M20 cable glands and a breathable vent membrane against condensation'],['Solar frame','Ø20 mm aluminium tube','Through-bolted to deck; panel clamp bolts with Nyloc nuts'],
+    ['Docking cradle','UHMW-PE rails, GFRP funnel','Low-friction rails; funnel guides AUV nose ±0.1 m'],['Fasteners','A4 (316) stainless','Anti-seize on aluminium threads'],['Hull finish','Antifouling coating, PU bow fender','Protects during launch and berthing']]
+};
+function renderAnalysis(){
+  if(!$('#anaOut'))return;
+  if(MECH.model==='asv'){
+    const a=asvAnalysis();
+    $('#anaOut').innerHTML=`<div class="chartbox"><h4>Hydrostatics</h4>${kv([['Displacement',n(a.M,1)+' kg'],['Draft (each hull)',a.sunk?'<span class="st-bad">hulls submerged</span>':n(a.d*1000,0)+' mm'],['Reserve buoyancy',`<span class="${a.reserve>100?'st-ok':'st-warn'}">${n(a.reserve,0)} %</span>`],['Deck clearance above water',n(a.deckClr*1000,0)+' mm'],['Docked AUV mass',n(a.auvM,1)+' kg']])}</div>
+      <div class="chartbox"><h4>Stability</h4>${kv([['KB (centre of buoyancy above keel)',n(a.KB*1000,0)+' mm'],['KG (centre of gravity above keel)',n(a.KG*1000,0)+' mm'],['BM transverse',n(a.BM,2)+' m'],['GM transverse',`<span class="${a.GM>0.3?'st-ok':'st-bad'}">${n(a.GM,2)} m</span>`],['GM longitudinal',n(a.GML,2)+' m'],['Natural roll period (est.)',n(a.Tn,2)+' s']])}</div>
+      <div class="chartbox"><h4>Resistance and endurance</h4>${kv([['Speed / Froude number',`${n(ANA.aspeed,1)} m/s · Fn ${n(a.Fn,2)}`],['Wetted surface',n(a.S,2)+' m²'],['Water resistance (ITTC-57 + form)',n(a.Rw,1)+' N'],['Wind drag',n(a.Ra,1)+' N'],['Propulsive power (η 0.35)',n(a.Pp,1)+' W'],['Hotel load',n(a.hotel,1)+' W'],['Endurance, battery only',n(a.endur,1)+' h'],['With 25 W avg solar',a.net<=1.5?'<span class="st-ok">energy-neutral or positive in daylight</span>':n(255/a.net,1)+' h'],['Thrust margin (2 × 44 N)',`<span class="${a.margin>3?'st-ok':'st-warn'}">${n(a.margin,1)}×</span>`]])}</div>`;
+    $('#massTitle').textContent='Mass budget and centre of gravity';
+    $('#massTable').innerHTML='<tr><th>Item</th><th>Mass</th><th>Height above keel</th><th>Moment</th></tr>'+a.items.map(x=>`<tr><td>${x[0]}</td><td>${n(x[1],2)} kg</td><td>${n(x[2],3)} m</td><td>${n(x[1]*x[2],2)} kg·m</td></tr>`).join('')+`<tr><td><b>Total</b></td><td><b>${n(a.M,1)} kg</b></td><td><b>KG ${n(a.KG,3)} m</b></td><td></td></tr>`;
+    $('#matTable').innerHTML='<tr><th>Part</th><th>Material</th><th>Detail</th></tr>'+MATS.asv.map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td></tr>`).join('');
+    $('#anaSub').textContent='Catamaran hydrostatics from circular-segment hull sections, ITTC-57 friction resistance and an energy balance. GM is very high, as expected for a wide catamaran: roll is stiff and quick, which matters for USBL motion compensation.';
+    const dm=$('#dimMass');if(dm)dm.textContent='≈'+n(a.M,0)+' kg';
+  }else{
+    const a=auvAnalysis(DEFS.find(d=>d.id===MECH.model).payload);
+    const sfA=a.Pcr/a.P;
+    $('#anaOut').innerHTML=`<div class="chartbox"><h4>Pressure housings at ${ANA.depth} m</h4>${kv([['External pressure (gauge)',n(a.P/1e5,2)+' bar'],[`Acrylic collapse pressure (${ANA.wall} mm, L = 300 mm)`,n(a.Pcr/1e5,1)+' bar'],['Acrylic safety factor (target ≥ 3)',sfTag(sfA,3,2)],['Predicted collapse depth',n(a.Pcr/(RHO*GRAV),0)+' m'],['Acrylic hoop stress',n(a.hoop,1)+' MPa (yield SF '+n(100/a.hoop,0)+')'],['Aluminium battery tube SF',sfTag(a.PcrA/a.P,3,2)],['End-cap plate stress (12 mm)',n(a.capS,1)+' MPa (SF '+n(276/a.capS,0)+')']])}</div>
+      <div class="chartbox"><h4>Buoyancy and trim</h4>${kv([['Mass before ballast',n(a.M,2)+' kg'],['Displaced volume',n(a.Vt*1000,1)+' L'],[a.foam>0?'Syntactic foam needed':'Lead ballast needed',a.foam>0?n(a.foam*1000,2)+' L':n(a.mb,2)+' kg'],['Ballast split front / rear',a.mb>0?`${n(a.front,2)} / ${n(a.rear,2)} kg`:'—'],['Total mass in air',n(a.Mt,2)+' kg'],['Net buoyancy','+1.5 % ('+n(a.Mt*0.015*GRAV,1)+' N)'],['CB above CG (BG)',`<span class="${a.BG>0.015?'st-ok':'st-warn'}">${n(a.BG*1000,0)} mm</span>`],['Righting moment at 10° roll',n(a.RM10,2)+' N·m'],['Static pitch trim',n(a.pitchTrim,1)+'°']])}</div>
+      <div class="chartbox"><h4>Propulsion and endurance</h4>${kv([['Cruise speed',n(a.v,1)+' m/s'],['Reynolds number',(a.Re/1e6).toFixed(2)+' × 10⁶'],['Drag (Cd 0.32 on frontal area)',n(a.Dr,1)+' N'],['Thrust margin (44 N main)',`<span class="${a.margin>3?'st-ok':'st-warn'}">${n(a.margin,1)}×</span>`],['Propulsive power (η 0.35)',n(a.Pp,1)+' W'],['Hotel + depth-hold thrusters',n(a.hotel,1)+' W'],['Total power',n(a.Ptot,1)+' W'],['Endurance (85 Wh usable)',n(a.endur,1)+' h'],['Range',n(a.range,1)+' km']])}</div>`;
+    $('#massTitle').textContent='Mass and buoyancy budget';
+    $('#massTable').innerHTML='<tr><th>Item</th><th>Mass</th><th>x from mid-body</th><th>Moment</th></tr>'+a.items.map(x=>`<tr><td>${x[0]}</td><td>${n(x[1],3)} kg</td><td>${n(x[2],2)} m</td><td>${n(x[1]*x[2],3)} kg·m</td></tr>`).join('')+
+      (a.mb>0?`<tr><td>Lead ballast (solved)</td><td>${n(a.mb,2)} kg</td><td>${n(a.xbC,2)} m</td><td>${n(a.mb*a.xbC,3)} kg·m</td></tr>`:'')+
+      `<tr><td><b>Total</b></td><td><b>${n(a.Mt,2)} kg</b></td><td><b>CG ${n(a.CGx,3)} · CB ${n(a.CBx,3)}</b></td><td></td></tr>`;
+    $('#matTable').innerHTML='<tr><th>Part</th><th>Material</th><th>Detail</th></tr>'+MATS.auv.map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td></tr>`).join('');
+    $('#anaSub').innerHTML=`Short-cylinder elastic buckling (Windenburg–Trilling, E = 3 GPa for acrylic), flat-plate end-cap stress, a solved ballast budget and a drag–power balance. ${sfA<3?'<b>The current wall thickness is below the recommended safety factor of 3 — acrylic creeps under sustained load.</b> ':''}The large ballast mass shows the dry housings are bigger than the payload needs; shortening the electronics tube would cut ballast and total mass.`;
+    const dm=$('#dimMass');if(dm)dm.textContent='≈'+n(a.Mt,1)+' kg';
+  }
+}
+
+/* ================================================================
+   View: Seabed map
+================================================================ */
+const MAPV={ready:false,ex:1};
+function initMap(){
+  const wrap=$('#mapWrap');
+  const R=new THREE.WebGLRenderer({antialias:true});R.setPixelRatio(Math.min(2,window.devicePixelRatio||1));wrap.insertBefore(R.domElement,wrap.firstChild);
+  const scene=new THREE.Scene();scene.background=new THREE.Color(0x061827);
+  const cam=new THREE.PerspectiveCamera(45,1,0.5,2000);cam.position.set(130,110,160);
+  const ctl=new THREE.OrbitControls(cam,R.domElement);ctl.target.set(0,-25,0);ctl.enableDamping=true;ctl.update();
+  scene.add(new THREE.HemisphereLight(0xffffff,0x223344,0.8));const dl=new THREE.DirectionalLight(0xffffff,0.8);dl.position.set(60,150,40);scene.add(dl);
+  const g=new THREE.PlaneGeometry(200,200,MN-1,MN-1);g.rotateX(-Math.PI/2);g.setAttribute('color',new THREE.BufferAttribute(new Float32Array(MN*MN*3),3));
+  const mesh=new THREE.Mesh(g,new THREE.MeshStandardMaterial({vertexColors:true,roughness:.85,metalness:0,side:THREE.DoubleSide}));scene.add(mesh);
+  const frame=new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(200,40,200)),new THREE.LineBasicMaterial({color:0x4fa3c7,transparent:true,opacity:.3}));frame.position.y=-20;scene.add(frame);
+  const a3=S.robots[3];
+  const plan=new THREE.Line(new THREE.BufferGeometry().setFromPoints(a3.path),new THREE.LineDashedMaterial({color:0xffffff,dashSize:2,gapSize:2,transparent:true,opacity:.35}));plan.computeLineDistances();scene.add(plan);
+  const tgeo=new THREE.BufferGeometry();tgeo.setAttribute('position',new THREE.BufferAttribute(new Float32Array(4000*3),3));const trail=new THREE.Line(tgeo,new THREE.LineBasicMaterial({color:0xad7bff}));trail.frustumCulled=false;scene.add(trail);
+  const mk=new THREE.Mesh(new THREE.SphereGeometry(2,16,12),new THREE.MeshBasicMaterial({color:0xad7bff}));scene.add(mk);
+  for(let d=20;d<=40;d+=10){const s=textSprite(d+' m',{h:4,fg:'#fff',bg:'rgba(3,17,29,.6)'});s.position.set(-108,-d,-100);scene.add(s);}
+  Object.assign(MAPV,{R,scene,cam,ctl,mesh,trail,mk,plan,wrap});
+  MAPV.reset=function(){S.map.dirty=true;MAPV.lastVer=-1;};
+  new ResizeObserver(()=>resizeR(R,cam,wrap)).observe(wrap);resizeR(R,cam,wrap);
+  MAPV.ready=true;updateMapMesh();
+}
+function updateMapMesh(){
+  const M=S.map,g=MAPV.mesh.geometry,p=g.attributes.position,c=g.attributes.color;
+  for(let k=0;k<MN*MN;k++){const v=M.meas[k];if(isNaN(v)){p.setY(k,-41);c.setXYZ(k,.25,.29,.33);}else{p.setY(k,v);const col=depthColor(-v);c.setXYZ(k,col[0],col[1],col[2]);}}
+  p.needsUpdate=true;c.needsUpdate=true;g.computeVertexNormals();M.dirty=false;
+}
+function renderMap(){
+  if(S.map.dirty)updateMapMesh();
+  const a3=S.robots[3];const ex=MAPV.ex;
+  MAPV.mesh.scale.y=ex;MAPV.plan.scale.y=ex;MAPV.trail.scale.y=ex;
+  const tr=a3.trail,a=MAPV.trail.geometry.attributes.position;const n=Math.min(tr.length,4000);for(let k=0;k<n;k++){a.array[k*3]=tr[k][0];a.array[k*3+1]=tr[k][1];a.array[k*3+2]=tr[k][2];}a.needsUpdate=true;MAPV.trail.geometry.setDrawRange(0,n);
+  MAPV.mk.position.set(a3.pos.x,a3.pos.y*ex,a3.pos.z);
+  MAPV.ctl.update();MAPV.R.render(MAPV.scene,MAPV.cam);
+}
+function mapStats(){
+  const M=S.map;let mn=Infinity,mx=-Infinity,sum=0,n=0;for(let k=0;k<MN*MN;k++){const v=M.meas[k];if(!isNaN(v)){const d=-v;mn=Math.min(mn,d);mx=Math.max(mx,d);sum+=d;n++;}}
+  return{cov:M.covered/(MN*MN)*100,min:n?mn:null,max:n?mx:null,mean:n?sum/n:null,n:M.pings};
+}
+function drawMap2D(){
+  const cv=$('#map2d'),ctx=cv.getContext('2d');if(!ctx)return;const W=cv.width,H=cv.height,cs=W/MN;
+  ctx.fillStyle='#0b1c2b';ctx.fillRect(0,0,W,H);
+  const M=S.map;for(let j=0;j<MN;j++)for(let i=0;i<MN;i++){const v=M.meas[j*MN+i];if(isNaN(v))continue;const c=depthColor(-v);ctx.fillStyle=`rgb(${c[0]*255|0},${c[1]*255|0},${c[2]*255|0})`;ctx.fillRect(i*cs,j*cs,cs+0.6,cs+0.6);}
+  const tx=x=>(x+100)/200*W,tz=z=>(z+100)/200*H;
+  ctx.strokeStyle='rgba(255,255,255,.25)';ctx.setLineDash([3,3]);ctx.beginPath();S.robots[3].path.forEach((p,k)=>k?ctx.lineTo(tx(p.x),tz(p.z)):ctx.moveTo(tx(p.x),tz(p.z)));ctx.stroke();ctx.setLineDash([]);
+  S.robots.forEach(r=>{ctx.fillStyle=COL[r.id];ctx.beginPath();ctx.arc(tx(r.pos.x),tz(r.pos.z),r.kind==='asv'?5:4,0,Math.PI*2);ctx.fill();ctx.strokeStyle='#fff';ctx.lineWidth=1;ctx.stroke();});
+  ctx.fillStyle='#cfe3f0';ctx.font='11px Barlow, sans-serif';ctx.fillText('N ↑   200 m × 200 m',6,H-6);
+}
+
+/* ================================================================
+   Charts (canvas)
+================================================================ */
+let chartsDirty=true;
+function drawChart(cv,series,opt){
+  opt=opt||{};const dpr=Math.min(2,window.devicePixelRatio||1);const W=cv.clientWidth||300,H=cv.clientHeight||170;
+  if(cv.width!==Math.round(W*dpr)||cv.height!==Math.round(H*dpr)){cv.width=Math.round(W*dpr);cv.height=Math.round(H*dpr);}
+  const c=cv.getContext('2d');if(!c)return;c.setTransform(dpr,0,0,dpr,0,0);c.clearRect(0,0,W,H);
+  const pl=40,pr=8,pt=8,pb=20;let x0=Infinity,x1=-Infinity,y0=Infinity,y1=-Infinity;
+  series.forEach(s=>s.pts.forEach(p=>{if(p[1]==null)return;x0=Math.min(x0,p[0]);x1=Math.max(x1,p[0]);y0=Math.min(y0,p[1]);y1=Math.max(y1,p[1]);}));
+  const muted=cssVar('--muted')||'#888',grid=cssVar('--grid')||'rgba(0,0,0,.1)';
+  c.font='11px Barlow, sans-serif';c.fillStyle=muted;
+  if(!isFinite(x0)){c.fillText('Waiting for samples…',pl,H/2);return;}
+  if(opt.min!=null)y0=Math.min(y0,opt.min);if(opt.max!=null)y1=Math.max(y1,opt.max);
+  if(y1-y0<1e-6){y0-=1;y1+=1;}const pad=(y1-y0)*0.08;y0-=pad;y1+=pad;if(x1-x0<1)x1=x0+1;
+  const X=x=>pl+(x-x0)/(x1-x0)*(W-pl-pr),Y=y=>opt.invert?pt+(y-y0)/(y1-y0)*(H-pt-pb):H-pb-(y-y0)/(y1-y0)*(H-pt-pb);
+  c.strokeStyle=grid;c.lineWidth=1;
+  for(let k=0;k<=4;k++){const yv=y0+(y1-y0)*k/4;const yy=Y(yv);c.beginPath();c.moveTo(pl,yy);c.lineTo(W-pr,yy);c.stroke();c.fillText(yv.toFixed(opt.dec==null?1:opt.dec),2,yy+4);}
+  c.fillText(fmtT(x0).slice(2),pl,H-5);const lt=fmtT(x1).slice(2);c.fillText(lt,W-pr-c.measureText(lt).width,H-5);
+  series.forEach(s=>{c.strokeStyle=s.color;c.lineWidth=1.8;c.beginPath();let st=false;s.pts.forEach(p=>{if(p[1]==null){st=false;return;}const x=X(p[0]),y=Y(p[1]);if(!st){c.moveTo(x,y);st=true;}else c.lineTo(x,y);});c.stroke();
+    c.fillStyle=cssVar('--bad')||'#e33';s.pts.forEach(p=>{if(p[2]&&p[1]!=null){c.beginPath();c.arc(X(p[0]),Y(p[1]),3.2,0,Math.PI*2);c.fill();}});});
+}
+function seriesOf(r,key,flagKey){return{color:COL[r.id],pts:r.hist.slice(-180).map(h=>[h.t,h[key]==null?null:h[key],h.fl&&h.fl[flagKey||key]])};}
+function keysHTML(rs){return rs.map(r=>`<span class="bus"><i style="background:${COL[r.id]}"></i>${r.name}</span>`).join('');}
+function drawCharts(){
+  const A=S.robots;
+  drawChart($('#chDepth'),A.slice(1).map(r=>seriesOf(r,'depth')),{invert:true,min:0});
+  drawChart($('#chTemp'),A.map(r=>seriesOf(r,'temp')),{});
+  drawChart($('#chBatt'),A.map(r=>seriesOf(r,'batt')),{min:0,max:100,dec:0});
+  drawChart($('#chSal'),[seriesOf(A[1],'sal')],{dec:2});
+  drawChart($('#chDO'),[seriesOf(A[2],'do')],{dec:2});
+  drawChart($('#chAlt'),[seriesOf(A[3],'alt')],{});
+}
+
+/* ================================================================
+   Static content: electronics, wiring, docs
+================================================================ */
+const ELEC=[
+ {n:'Raspberry Pi 4B',p:'Raspberry Pi 4 Model B, 4 GB',fn:'Mission computer: navigation, mission state machine, sensor fusion, logging and the AI monitor. Runs Linux with ROS 2 nodes.',io:'I²C, UART, SPI, USB, Ethernet, GPIO',v:'5 V / 3 A',spec:'Quad Cortex-A72 @ 1.5 GHz',on:['asv','auv1','auv2','auv3'],c:'#169b6b',ic:'board'},
+ {n:'ESP32',p:'ESP32-WROOM-32 module',fn:'Hard real-time I/O coprocessor: thruster and servo PWM, battery ADC, leak input, LoRa radio (ASV), watchdog failsafe.',io:'UART, SPI, I²C, PWM (LEDC), ADC',v:'3.3 V (5 V VIN)',spec:'Dual-core 240 MHz, Wi-Fi/BLE',on:['asv','auv1','auv2','auv3'],c:'#334155',ic:'chip'},
+ {n:'GPS module',p:'u-blox NEO-M8N + active antenna',fn:'Absolute position and time for the ASV; sets the survey datum and geo-references AUV data. AUVs get a fix only when surfaced.',io:'UART (NMEA/UBX), PPS',v:'3.3–5 V',spec:'≈2.5 m CEP, up to 10 Hz',on:['asv'],c:'#1d9bd6',ic:'gps'},
+ {n:'IMU',p:'Bosch BNO055 9-DoF',fn:'Roll, pitch, heading for control loops and dead-reckoning underwater.',io:'I²C (0x28)',v:'3.3 V',spec:'On-chip fusion, 100 Hz Euler/quaternion',on:['asv','auv1','auv2','auv3'],c:'#7c3aed',ic:'chip'},
+ {n:'Temperature sensor',p:'DS18B20 waterproof probe',fn:'Water temperature for the survey (AUV 1), DO compensation (AUV 2) and sea-surface temperature (ASV).',io:'1-Wire',v:'3.0–5.5 V',spec:'±0.5 °C (−10…+85 °C)',on:['asv','auv1','auv2'],c:'#e8932a',ic:'probe'},
+ {n:'Salinity sensor',p:'Atlas Scientific EZO-EC + K1.0 probe',fn:'Electrical conductivity converted to practical salinity (PSU) for the AUV 1 survey.',io:'I²C (0x64) or UART',v:'3.3–5 V',spec:'±2 % conductivity reading',on:['auv1'],c:'#e8932a',ic:'probe'},
+ {n:'Dissolved oxygen sensor',p:'Atlas Scientific EZO-DO + galvanic probe',fn:'Dissolved oxygen concentration (mg/L) for the AUV 2 survey, temperature- and salinity-compensated.',io:'I²C (0x61) or UART',v:'3.3–5 V',spec:'±0.05 mg/L reading',on:['auv2'],c:'#169b6b',ic:'probe'},
+ {n:'Pressure / depth sensor',p:'TE MS5837-30BA',fn:'Depth from hydrostatic pressure for depth hold and data depth-tagging.',io:'I²C (0x76)',v:'3.3 V',spec:'0–30 bar, 0.2 mbar (≈2 mm) resolution',on:['auv1','auv2','auv3'],c:'#0d7f86',ic:'chip'},
+ {n:'Sonar',p:'Blue Robotics Ping2 echosounder (class)',fn:'Altitude above seabed and bottom depth for terrain following and bathymetric mapping on AUV 3.',io:'UART 115200 (USB bridge)',v:'4.5–5.5 V',spec:'115 kHz, narrow beam, tens of metres range',on:['auv3'],c:'#9154e0',ic:'sonar'},
+ {n:'Motor driver',p:'Bidirectional brushless ESC, 30 A class',fn:'Converts PWM commands into 3-phase drive for thrusters (2 on ASV, 3 per AUV).',io:'PWM 50 Hz, 1100–1900 µs',v:'7–20 V',spec:'Forward/reverse, ≥30 A continuous',on:['asv','auv1','auv2','auv3'],c:'#3b5bdb',ic:'chip'},
+ {n:'Battery',p:'4S Li-ion with BMS',fn:'Energy storage: ≈300 Wh on the ASV (plus solar), ≈100 Wh per AUV. BMS gives cell balancing and over-current cut-off.',io:'XT90 / XT60 power, balance lead',v:'14.8 V nominal (12–16.8 V)',spec:'ASV 20 Ah · AUV 6.8 Ah',on:['asv','auv1','auv2','auv3'],c:'#2563eb',ic:'batt'},
+ {n:'Power distribution board',p:'Custom PDB + 5 V/5 A buck',fn:'Splits the battery into a fused propulsion bus and a regulated 5 V logic bus; provides voltage/current sensing to the ESP32.',io:'Power, analogue sense',v:'14.8 V in · 5 V / 3.3 V out',spec:'20 A main fuse, star ground',on:['asv','auv1','auv2','auv3'],c:'#c0262d',ic:'board'},
+ {n:'Power monitor',p:'TI INA226 + 2 mΩ shunt',fn:'Measures bus voltage, current and energy used so the AI monitor can predict endurance and spot abnormal discharge.',io:'I²C (0x40)',v:'3.3 V',spec:'16-bit, ±0.1 % gain error',on:['asv','auv1','auv2','auv3'],c:'#c0262d',ic:'chip'},
+ {n:'Doppler velocity log',p:'Water Linked DVL A50 (class)',fn:'Measures velocity over the seabed for dead-reckoning between acoustic position fixes.',io:'Serial / Ethernet',v:'10–30 V',spec:'4 beams, bottom lock to ~50 m',on:['auv1','auv2','auv3'],c:'#9154e0',ic:'sonar'},
+ {n:'USBL positioning',p:'Underwater GPS / USBL topside (class)',fn:'Range and bearing to each AUV from the ASV, combined with ASV GPS to geo-reference AUV positions.',io:'Ethernet',v:'12–24 V',spec:'~1 % slant-range positioning',on:['asv'],c:'#f97316',ic:'wave'},
+ {n:'Communication module',p:'Acoustic modem · LoRa SX1276 · LTE',fn:'Acoustic modem links ASV↔AUVs underwater; LoRa 433 MHz (and LTE fallback) links the ASV to the shore station.',io:'USB-UART (modem), SPI (LoRa), USB (LTE)',v:'5 V / 3.3 V',spec:'Acoustic ~0.1–1 kbit/s; LoRa km-range LOS',on:['asv','auv1','auv2','auv3'],c:'#0ea5e9',ic:'wave'}
+];
+function icon(t,c){
+  const s={board:`<rect x="4" y="8" width="32" height="24" rx="3" fill="${c}"/><rect x="10" y="13" width="10" height="10" fill="#0b1520"/><g fill="#d4af37"><rect x="24" y="12" width="8" height="3"/><rect x="24" y="18" width="8" height="3"/><rect x="24" y="24" width="8" height="3"/></g>`,
+    chip:`<rect x="10" y="10" width="20" height="20" rx="2" fill="${c}"/><g stroke="#9aa6b2" stroke-width="2">${[13,18,23,28].map(v=>`<line x1="${v-1}" y1="4" x2="${v-1}" y2="10"/><line x1="${v-1}" y1="30" x2="${v-1}" y2="36"/><line x1="4" y1="${v-1}" x2="10" y2="${v-1}"/><line x1="30" y1="${v-1}" x2="36" y2="${v-1}"/>`).join('')}</g>`,
+    gps:`<circle cx="20" cy="20" r="14" fill="${c}"/><circle cx="20" cy="20" r="6" fill="#fff"/><path d="M20 2v6M20 32v6M2 20h6M32 20h6" stroke="${c}" stroke-width="2"/>`,
+    probe:`<rect x="16" y="2" width="8" height="12" rx="2" fill="#475569"/><rect x="17" y="14" width="6" height="22" rx="3" fill="${c}"/>`,
+    sonar:`<circle cx="12" cy="20" r="6" fill="${c}"/><path d="M20 12a12 12 0 0 1 0 16M25 8a18 18 0 0 1 0 24M30 4a24 24 0 0 1 0 32" stroke="${c}" stroke-width="2.4" fill="none"/>`,
+    batt:`<rect x="4" y="11" width="28" height="18" rx="3" fill="${c}"/><rect x="32" y="16" width="4" height="8" fill="${c}"/><path d="M14 20h8M18 16v8" stroke="#fff" stroke-width="2.4"/>`,
+    wave:`<path d="M3 20c4-8 8 8 12 0s8 8 12 0 6-6 10 0" stroke="${c}" stroke-width="3" fill="none"/><circle cx="20" cy="9" r="3" fill="${c}"/>`}[t];
+  return `<svg width="40" height="40" viewBox="0 0 40 40" aria-hidden="true">${s}</svg>`;
+}
+function renderElec(filter){
+  $('#elecGrid').innerHTML=ELEC.filter(e=>filter==='all'||e.on.includes(filter)).map(e=>`<article class="ecard"><div class="eh">${icon(e.ic,e.c)}<div><h4>${e.n}</h4><div class="pn">Typical part: ${e.p}</div></div></div>
+    <p style="margin:0">${e.fn}</p><dl><dt>Interface</dt><dd>${e.io}</dd><dt>Supply</dt><dd>${e.v}</dd><dt>Key spec</dt><dd>${e.spec}</dd></dl>
+    <div class="used">${e.on.map(o=>`<span style="background:${COL[o]}">${DEFS.find(d=>d.id===o).name}</span>`).join('')}</div></article>`).join('');
+}
+
+const BUS={POWER:'#e5484d',GND:'#7b8794','I²C':'#3b82f6',UART:'#22a55e',SPI:'#a855f7',PWM:'#f97316','1-Wire':'#14b8a6',USB:'#0ea5e9',ETH:'#64748b',ADC:'#d4a017',GPIO:'#d4a017'};
+const busOn={};Object.keys(BUS).forEach(k=>busOn[k]=true);
+function wiringFor(id){
+  const B=[],Lk=[];const b=(k,col,t,s)=>B.push({k,col,t,s});const l=(a,c,bus,pins,v,ref)=>Lk.push({a,b:c,bus,pins,v,ref:!!ref});
+  if(id==='asv'){
+    b('SOL',0,'Solar panel 100 W','18 V Vmp · MC4');b('MPPT',0,'MPPT charge controller','4S Li-ion profile');b('BAT',0,'Battery 4S Li-ion 20 Ah','14.8 V nominal, BMS');b('ESTOP',0,'E-stop + 40 A contactor','opens propulsion bus only');b('PDB',0,'Power distribution board','fuses · TVS · ideal diode');b('INA',0,'INA226 power monitor','I²C 0x40 · 2 mΩ shunt');b('BEC',0,'5 V / 5 A buck converter','logic supply');
+    b('PI',1,'Raspberry Pi 4B','mission coordinator');b('ESP',1,'ESP32-WROOM-32','real-time I/O');
+    b('GPS',2,'GPS u-blox NEO-M8N','UART 9600 Bd + PPS');b('IMU',2,'IMU BNO055','I²C 0x28');b('TMP',2,'DS18B20 SST probe','1-Wire');b('FLOAT',2,'Bilge float switches','dry contact, both hulls');
+    b('ESC',3,'ESC ×2 → 2 thrusters','30 A bidirectional');b('LORA',3,'LoRa SX1276 433 MHz','shore link');b('MOD',3,'Acoustic modem (topside)','USB-UART');b('USBL',3,'USBL transceiver','AUV positioning · Ethernet');b('LTE',3,'LTE modem','USB, fallback link');b('WIN',3,'Dock winch / latch relay','14.8 V coil');b('LGT',3,'Nav lights + bilge pumps','MOSFET low-side switches');
+    l('SOL','MPPT','POWER','PV input · 15 A fuse','18 V');l('MPPT','BAT','POWER','charge output','16.8 V max');l('BAT','ESTOP','POWER','XT90 · 40 A ANL fuse','14.8 V');l('ESTOP','PDB','POWER','switched propulsion feed','14.8 V');
+    l('PDB','INA','POWER','high-side shunt sense','14.8 V');l('PDB','BEC','POWER','5 A fuse → buck','14.8 V');l('PDB','ESC','POWER','2 × 20 A fused outputs','14.8 V');l('PDB','WIN','POWER','5 A fused aux','14.8 V');l('PDB','LGT','POWER','5 A fused aux','14.8 V');l('PDB','USBL','POWER','3 A fused aux','14.8 V');l('PDB','MOD','POWER','3 A fused aux','14.8 V');
+    l('BEC','PI','POWER','5V → pin 2/4','5 V');l('BEC','ESP','POWER','VIN','5 V');l('PDB','PI','GND','star ground → pin 6','0 V');l('PDB','ESP','GND','star ground → GND','0 V');
+    l('PI','GPS','UART','GPIO14 TX → RX · GPIO15 RX ← TX','3.3 V',true);l('PI','GPS','GPIO','GPIO18 ← PPS','3.3 V');l('PI','IMU','I²C','GPIO2 SDA · GPIO3 SCL','3.3 V',true);l('PI','INA','I²C','GPIO2/3 shared bus','3.3 V',true);l('PI','TMP','1-Wire','GPIO4 + 4.7 kΩ pull-up','3.3 V',true);
+    l('PI','ESP','USB','USB ↔ CP2102 bridge','5 V');l('PI','ESP','GPIO','GPIO17 → EN reset · GPIO27 ← heartbeat','3.3 V');
+    l('PI','MOD','USB','USB port 1','5 V');l('PI','LTE','USB','USB port 2','5 V');l('PI','USBL','ETH','Gigabit Ethernet','—');
+    l('ESP','ESC','PWM','GPIO25 port · GPIO26 stbd','3.3 V logic');l('ESP','LORA','SPI','GPIO23 MOSI · 19 MISO · 18 SCK · 5 CS','3.3 V',true);l('ESP','LORA','GPIO','DIO0 → GPIO32 · RST ← GPIO33','3.3 V');
+    l('ESP','WIN','GPIO','GPIO27 → relay driver','3.3 V');l('ESP','LGT','GPIO','GPIO13 lights · GPIO14 bilge','3.3 V');l('ESP','FLOAT','GPIO','GPIO35 ← float switches','3.3 V');l('ESP','ESTOP','GPIO','GPIO36 ← e-stop aux contact','3.3 V');l('ESP','PDB','ADC','GPIO34 Vbat ÷ · GPIO39 I-solar','≤ 3.3 V');
+  }else{
+    b('BAT',0,'Battery 4S2P Li-ion 6.8 Ah','14.8 V nominal, BMS');b('KILL',0,'Magnetic kill switch','reed + 30 A MOSFET, soft-start');b('PDB',0,'Power distribution board','fuses · TVS · ideal diode');b('INA',0,'INA226 power monitor','I²C 0x40 · 2 mΩ shunt');b('BEC',0,'5 V / 5 A buck (logic)','Pi, ESP32, sensors');b('BEC6',0,'6 V / 3 A buck (servos)','separate servo rail');
+    b('PI',1,'Raspberry Pi 4B','mission computer');b('ESP',1,'ESP32-WROOM-32','real-time I/O');
+    b('IMU',2,'IMU BNO055','I²C 0x28');b('DEP',2,'Depth MS5837-30BA','I²C 0x76');
+    if(id==='auv1'){b('EC',2,'Salinity Atlas EZO-EC','I²C 0x64 · isolated carrier');b('TMP',2,'DS18B20 temperature','1-Wire');}
+    if(id==='auv2'){b('DO',2,'Dissolved O₂ Atlas EZO-DO','I²C 0x61 · isolated carrier');b('TMP',2,'DS18B20 temperature','1-Wire');}
+    if(id==='auv3'){b('SON',2,'Sonar Ping2 echosounder','UART 115200 via USB');b('SSS',2,'Side-scan module (concept)','Ethernet');}
+    b('DVL',2,'DVL (A50 class)','serial via USB bridge');b('LEAK',2,'Leak sensors ×2','electronics + battery housings');
+    b('ESC',3,'ESC ×3 → 3 thrusters','main + 2 vertical');b('SRV',3,'Fin servos ×2','elevator · rudder, 6 V');b('MOD',3,'Acoustic modem','USB-UART');b('SD',3,'microSD data logger','SPI');b('STRB',3,'Strobe + burn-wire release','MOSFET switched');
+    l('BAT','KILL','POWER','XT60 · 30 A fuse at pack','14.8 V');l('KILL','PDB','POWER','switched main bus','14.8 V');l('PDB','INA','POWER','high-side shunt sense','14.8 V');
+    l('PDB','BEC','POWER','5 A fuse → buck','14.8 V');l('PDB','BEC6','POWER','5 A fuse → buck','14.8 V');l('PDB','ESC','POWER','20 A main · 2 × 10 A vertical','14.8 V');l('PDB','STRB','POWER','3 A fused aux','14.8 V');l('PDB','DVL','POWER','2 A fused aux','14.8 V');l('PDB','MOD','POWER','2 A fused aux','14.8 V');
+    l('BEC','PI','POWER','5V → pin 2/4','5 V');l('BEC','ESP','POWER','VIN','5 V');l('BEC6','SRV','POWER','servo rail','6 V');l('PDB','PI','GND','star ground → pin 6','0 V');l('PDB','ESP','GND','star ground → GND','0 V');
+    l('PI','IMU','I²C','GPIO2 SDA · GPIO3 SCL','3.3 V',true);l('PI','DEP','I²C','GPIO2/3 shared bus','3.3 V',true);l('PI','INA','I²C','GPIO2/3 shared bus','3.3 V',true);
+    if(id==='auv1'){l('PI','EC','I²C','GPIO2/3 shared bus','3.3 V',true);l('PI','TMP','1-Wire','GPIO4 + 4.7 kΩ pull-up','3.3 V',true);}
+    if(id==='auv2'){l('PI','DO','I²C','GPIO2/3 shared bus','3.3 V',true);l('PI','TMP','1-Wire','GPIO4 + 4.7 kΩ pull-up','3.3 V',true);}
+    if(id==='auv3'){l('PI','SON','USB','USB-UART bridge','5 V');l('PI','SSS','ETH','Ethernet port','—');}
+    l('PI','DVL','USB','USB-UART bridge','5 V');
+    l('PI','ESP','UART','GPIO14 TX → GPIO16 RX · GPIO15 RX ← GPIO17 TX','3.3 V',true);l('PI','ESP','GPIO','GPIO17 → EN reset · GPIO27 ← heartbeat','3.3 V');l('PI','MOD','USB','USB port','5 V');
+    l('ESP','ESC','PWM','GPIO25 main · GPIO26 / GPIO27 vertical','3.3 V logic');l('ESP','SRV','PWM','GPIO13 elevator · GPIO14 rudder','3.3 V logic');
+    l('ESP','SD','SPI','GPIO23 MOSI · 19 MISO · 18 SCK · 5 CS','3.3 V',true);l('ESP','LEAK','GPIO','GPIO35 elec · GPIO39 battery','3.3 V');l('ESP','STRB','GPIO','GPIO32 strobe · GPIO33 burn-wire','3.3 V');l('ESP','PDB','ADC','GPIO34 Vbat divider','≤ 3.3 V');
+  }
+  return{B,L:Lk};
+}
+const PIHDR={1:'3V3',2:'5V',3:'GPIO2',4:'5V',5:'GPIO3',6:'GND',7:'GPIO4',8:'GPIO14',9:'GND',10:'GPIO15',11:'GPIO17',12:'GPIO18',13:'GPIO27',14:'GND',15:'GPIO22',16:'GPIO23',17:'3V3',18:'GPIO24',19:'GPIO10',20:'GND',21:'GPIO9',22:'GPIO25',23:'GPIO11',24:'GPIO8',25:'GND',26:'GPIO7',27:'ID_SD',28:'ID_SC',29:'GPIO5',30:'GND',31:'GPIO6',32:'GPIO12',33:'GPIO13',34:'GND',35:'GPIO19',36:'GPIO16',37:'GPIO26',38:'GPIO20',39:'GND',40:'GPIO21'};
+function piUse(id){
+  const u={1:['3.3 V → I²C sensors','POWER'],2:['5 V in from buck','POWER'],4:['5 V in (parallel)','POWER'],6:['GND star point','GND'],9:['GND sensors','GND'],3:['I²C-1 SDA','I²C'],5:['I²C-1 SCL','I²C'],11:['ESP32 EN reset (NPN)','GPIO'],13:['heartbeat ← ESP32 GPIO4','GPIO']};
+  if(id!=='auv3')u[7]=['1-Wire DS18B20','1-Wire'];
+  if(id==='asv'){u[8]=['UART0 TX → GPS','UART'];u[10]=['UART0 RX ← GPS','UART'];u[12]=['GPS PPS time sync','GPIO'];}
+  else{u[8]=['UART0 TX → ESP32','UART'];u[10]=['UART0 RX ← ESP32','UART'];}
+  return u;
+}
+function espPins(id){
+  if(id==='asv')return[['GPIO1 / GPIO3','UART0 ↔ Pi','both','USB','via on-board CP2102 USB bridge'],['GPIO25','ESC — port thruster','out','PWM','LEDC 50 Hz, 1100–1900 µs; 1500 µs neutral from boot'],['GPIO26','ESC — starboard thruster','out','PWM','as above'],
+    ['GPIO23 / 19 / 18','LoRa MOSI / MISO / SCK','—','SPI','VSPI default pins'],['GPIO5','LoRa NSS (CS)','out','SPI','strapping pin — 10 kΩ pull-up, idle high'],['GPIO32','LoRa DIO0 (IRQ)','in','GPIO','rising-edge interrupt'],['GPIO33','LoRa RESET','out','GPIO',''],
+    ['GPIO27','Dock winch relay','out','GPIO','MOSFET + flyback diode'],['GPIO13','Navigation lights','out','GPIO','logic-level MOSFET, low side'],['GPIO14','Bilge pumps','out','GPIO','emits PWM at boot — 100 kΩ gate pull-down'],
+    ['GPIO35','Bilge float switches','in','GPIO','input-only, no internal pull — 10 kΩ external'],['GPIO36 (VP)','E-stop auxiliary contact','in','GPIO','input-only — external pull-up'],['GPIO34','Battery voltage','in','ADC','ADC1 (works with Wi-Fi on); 100 k / 22 k divider'],['GPIO39 (VN)','Solar current (shunt amp)','in','ADC','ADC1'],
+    ['GPIO4','Heartbeat → Pi GPIO27','out','GPIO','1 Hz toggle; Pi expects ≥1 edge per 2 s'],['EN','Reset ← Pi GPIO17','in','GPIO','open-collector NPN pulls EN low']];
+  return[['GPIO16','UART2 RX ← Pi TX','in','UART','921 600 Bd framed protocol with CRC-16'],['GPIO17','UART2 TX → Pi RX','out','UART','WROOM only — used by PSRAM on WROVER'],
+    ['GPIO25','ESC — main thruster','out','PWM','LEDC 50 Hz, 1100–1900 µs'],['GPIO26','ESC — vertical thruster (port)','out','PWM',''],['GPIO27','ESC — vertical thruster (stbd)','out','PWM',''],
+    ['GPIO13','Elevator servo','out','PWM','50 Hz, 500–2500 µs'],['GPIO14','Rudder servo','out','PWM','boot-time PWM glitch — enable servo rail after boot'],
+    ['GPIO23 / 19 / 18','microSD MOSI / MISO / SCK','—','SPI','VSPI default pins'],['GPIO5','microSD CS','out','SPI','strapping pin — pull-up'],
+    ['GPIO32','Strobe MOSFET','out','GPIO',''],['GPIO33','Burn-wire MOSFET','out','GPIO','2 A for 8 s; armed by two-step command'],
+    ['GPIO35','Leak sensor — electronics housing','in','GPIO','input-only; 1 MΩ pull-down'],['GPIO39 (VN)','Leak sensor — battery housing','in','GPIO','input-only; 1 MΩ pull-down'],['GPIO34','Battery voltage','in','ADC','ADC1; 100 k / 22 k divider'],
+    ['GPIO4','Heartbeat → Pi GPIO27','out','GPIO','1 Hz toggle'],['EN','Reset ← Pi GPIO17','in','GPIO','open-collector NPN']];
+}
+function i2cMap(id){const r=[['0x28','BNO055 IMU','addr pin low; clock stretching — run bus at 10–50 kHz or switch the BNO055 to UART mode'],['0x40','INA226 power monitor','A0/A1 to GND']];
+  if(id!=='asv')r.push(['0x76','MS5837-30BA depth','fixed address; keep lead ≤ 30 cm or use a differential I²C extender']);
+  if(id==='auv1')r.push(['0x64','Atlas EZO-EC','default address; on isolated carrier to stop ground loops through seawater']);
+  if(id==='auv2')r.push(['0x61','Atlas EZO-DO','default address; on isolated carrier']);
+  return r;}
+function powerLoads(id){
+  if(id==='asv')return{ah:20,fuse:40,solar:25,loads:[['Raspberry Pi 4B','5 V',5,0.75,1.3],['ESP32 + LoRa radio','5 V',5,0.12,0.4],['GPS, IMU, INA226, DS18B20','5 V',5,0.08,0.12],['LTE modem','5 V',5,0.15,0.6],
+    ['Topside acoustic modem','Main',14.8,0.15,0.8],['USBL transceiver','Main',14.8,0.3,0.6],['Thrusters ×2 (cruise / full)','Propulsion',14.8,0.8,30],['Dock winch (recovery only)','Aux',14.8,0,4],['Nav lights','Aux',14.8,0.15,0.15],['Bilge pumps ×2','Aux',14.8,0,2.4]]};
+  const L=[['Raspberry Pi 4B','5 V',5,0.7,1.2],['ESP32','5 V',5,0.08,0.25],['IMU, depth, INA226','5 V',5,0.03,0.05]];
+  if(id==='auv1')L.push(['EZO-EC + DS18B20','5 V',5,0.05,0.06]);
+  if(id==='auv2')L.push(['EZO-DO + DS18B20','5 V',5,0.05,0.06]);
+  if(id==='auv3'){L.push(['Echosounder (Ping2 class)','5 V',5,0.1,0.25]);L.push(['Side-scan module (concept)','Main',14.8,0.3,0.5]);}
+  L.push(['DVL','Main',14.8,0.27,0.5],['Acoustic modem (rx / tx)','Main',14.8,0.1,0.8],['Main thruster (cruise 1.4 m/s / full)','Propulsion',14.8,1.55,18],['Vertical thrusters ×2','Propulsion',14.8,0.4,12],['Fin servos ×2','6 V servo',6,0.1,1.5],['Strobe','Aux',14.8,0,0.1],['Burn-wire (emergency only)','Aux',14.8,0,2]);
+  return{ah:6.8,fuse:30,solar:0,loads:L};
+}
+function harness(id){
+  if(id==='asv')return[['H1','Battery → e-stop contactor → PDB','XT90, ring lugs','2-core','10 AWG','40 A ANL fuse at battery'],['H2','Solar panel → MPPT → battery','MC4 → ring lugs','2-core','12 AWG','15 A inline fuse'],['H3','PDB → ESCs → thrusters','XT60 → IP68 M16 cable glands','3-phase per motor','14 AWG','20 A per output'],
+    ['H4','GPS / LoRa / LTE antennas','SMA bulkhead, N-type at mast','coax','RG174 / RG58','—'],['H5','USBL head','8-pin Bulgin 4000 series','power + Ethernet','22 AWG Cat5e','3 A fuse'],['H6','Topside acoustic modem','6-pin wet-mate','power + serial','22 AWG','3 A fuse'],
+    ['H7','Nav lights, bilge pumps, floats','M12 IP68 glands','2-core each','18 AWG','5 A fuse'],['H8','Dock cradle charge + data','8-pin wet-mate dock plug','2 power + 2 Ethernet pairs','14 AWG + Cat5e','10 A charge fuse'],['H9','DS18B20 SST probe','M8 gland','3-core shielded','24 AWG','—']];
+  const r=[['H1','Battery → kill switch → PDB','XT60 internal','2-core','12 AWG silicone','30 A blade fuse at pack'],['H2','Battery housing ↔ electronics housing','M10 potted penetrators both ends','2 power + 2 sense','12 AWG + 24 AWG','—'],
+    ['H3','ESCs → thrusters ×3','M10 potted penetrators ×3','3-core per motor','16 AWG (thruster tail)','20 / 10 / 10 A'],['H4','Fin servos ×2','M10 penetrators ×2','3-core','22 AWG','3 A on 6 V rail'],
+    ['H5','Depth sensor','M10 penetrator','4-core I²C','26 AWG shielded','I²C run ≤ 30 cm'],['H6','Acoustic modem','6-pin wet-mate','power + serial','22 AWG','2 A fuse'],['H7','DVL','8-pin wet-mate','power + serial','22 AWG','2 A fuse'],['H8','Strobe + burn-wire','M10 penetrator','4-core','20 AWG','3 A fuse'],
+    ['H9','Dock charge / data port','8-pin wet-mate','2 power + Ethernet','14 AWG + Cat5e','charge via BMS'],['H10','Magnetic kill switch','internal reed, no penetration','2-core signal','24 AWG','—']];
+  if(id==='auv1')r.splice(5,0,['H5b','CTD probe (EC + temperature)','M10 penetrator','5-core shielded','24 AWG','isolated EZO carrier']);
+  if(id==='auv2')r.splice(5,0,['H5b','DO probe + DS18B20','M10 penetrator','5-core shielded','24 AWG','isolated EZO carrier']);
+  if(id==='auv3')r.splice(5,0,['H5b','Echosounder + side-scan','6-pin wet-mate + Ethernet penetrator','serial + Ethernet','24 AWG','2 A fuse']);
+  return r;
+}
+function protection(id){
+  const c=['<b>Reverse polarity:</b> ideal-diode controller (MOSFET) at the PDB input — no 0.5 V diode loss at 20 A.','<b>Transients:</b> TVS diode (SMBJ18A) on the 14.8 V bus; local 470 µF low-ESR capacitance at each ESC to absorb regenerative spikes from braking thrusters.',
+   '<b>Fusing:</b> main fuse at the battery terminal, then one fuse per branch sized at ~125 % of the branch’s continuous current.','<b>Grounding:</b> single star point at the PDB; sensor grounds return through the Pi; no seawater-referenced grounds.',
+   '<b>Logic levels:</b> ESP32 and Pi GPIO are 3.3 V only — 5 V UART devices go through USB bridges or level shifters; check ESC signal input accepts 3.3 V.','<b>I²C:</b> one set of 4.7 kΩ pull-ups to 3.3 V on the bus (remove duplicates on breakout boards); keep runs short.',
+   '<b>Battery:</b> BMS with cell balancing, over-current and over-temperature cut-off; NTC on the pack read by the BMS.'];
+  if(id==='asv')c.push('<b>E-stop:</b> opens only the propulsion contactor so telemetry and lights stay on; contactor coil has a flyback diode.','<b>Solar:</b> MPPT with its own reverse-current protection; panel fused at 15 A.','<b>Lightning / static:</b> coax surge arrester on the mast antennas, bonded to the deck.');
+  else c.push('<b>Kill switch:</b> magnetic reed drives a soft-start MOSFET switch (pre-charge ≈200 ms) to avoid inrush arcing into ESC capacitors.','<b>Water ingress:</b> leak sensors in both housings trigger abort-and-surface; vacuum test before every dive.','<b>Servo rail:</b> separate 6 V buck so servo stall current cannot brown out the Pi.','<b>Isolation:</b> EZO conductivity / DO circuits on isolated carriers to prevent ground loops through the water.');
+  return c;
+}
+function sequence(id){
+  if(id==='asv')return['Close the battery isolator; MPPT starts charging if there is light.','5 V buck comes up; ESP32 boots in ≈0.3 s and holds both ESCs at 1500 µs neutral for arming.','Raspberry Pi boots (≈20 s), starts the heartbeat and checks: GPS 3D fix, I²C devices present, LoRa link to shore, USBL and acoustic modem respond.','Release the e-stop; contactor closes the propulsion bus only after the ESP32 has seen three heartbeats.','Shore station uploads the mission; ASV launches AUVs and starts acoustic polling.','<b>Failsafes:</b> lost shore link 60 s → hold station; lost Pi heartbeat 2 s → ESP32 sets neutral thrust and keeps the strobe/lights on; battery &lt; 25 % → recall AUVs and return to launch.','<b>Shutdown:</b> recover AUVs, Pi flushes logs, ESP32 neutralises outputs, press e-stop, open battery isolator.'];
+  return['Remove the magnetic key: the MOSFET switch soft-starts and charges ESC capacitors (≈200 ms).','5 V buck comes up; ESP32 boots first and holds all ESCs at 1500 µs and servos centred. Servo rail is enabled only after boot to avoid GPIO14 glitches.','Raspberry Pi boots (≈20 s) and starts the heartbeat. ESP32 allows thrust only after three heartbeats and with both leak sensors dry.','Pre-dive self-test: I²C scan matches the address map, depth zeroed at the surface, IMU calibration complete, battery ≥ 30 %, acoustic ping to the ASV answered, vacuum test passed.','ASV sends the arm command; the AUV dives on its waypoint list.','<b>Failsafes:</b> lost heartbeat 2 s → neutral thrust, vehicle floats up (positive buoyancy); leak detected → abort, surface, strobe on; battery &lt; 12 % → return to ASV; battery &lt; 8 % or lost link &gt; 10 min → fire burn-wire, drop weight, surface.','<b>Shutdown:</b> after docking, Pi offloads data over the dock port and flushes logs, ESP32 neutralises outputs, then the magnetic key is re-inserted.'];
+}
+function renderWiringDetail(){
+  const id=wireSel,u=piUse(id);const ink=cssVar('--ink'),muted=cssVar('--muted');
+  let s='<svg viewBox="0 0 480 470" role="img" aria-label="Raspberry Pi 40-pin header map">';
+  s+=`<rect x="203" y="12" width="74" height="446" rx="6" fill="#1b1f24"/>`;
+  for(let p=1;p<=40;p++){const row=Math.floor((p-1)/2),odd=p%2===1;const x=odd?222:258,y=24+row*22;const nm=PIHDR[p],us=u[p];
+    const col=us?BUS[us[1]]:(nm==='GND'?'#4b5563':nm==='5V'?'#7f1d1d':nm==='3V3'?'#7c2d12':'#2a3038');
+    s+=`<circle cx="${x}" cy="${y}" r="8" fill="${col}" stroke="${p===1?'#ffffff':'#d4af37'}" stroke-width="1.5"><title>Pin ${p} · ${nm}${us?' · '+us[0]:''}</title></circle><text x="${x}" y="${y+3.5}" text-anchor="middle" font-size="8.5" fill="#fff">${p}</text>`;
+    s+=`<text x="${odd?198:282}" y="${y+4}" font-size="11" text-anchor="${odd?'end':'start'}" fill="${us?ink:muted}" ${us?'font-weight="600"':''}>${esc(us?nm+' · '+us[0]:nm)}</text>`;}
+  s+='</svg>';$('#piHeader').innerHTML=s;
+  const used=Object.keys(u).length;
+  $('#piNote').innerHTML=`${used} of 40 pins used. Pin 1 (white ring) is nearest the SD-card end of the board. ${id==='asv'?'GPS uses UART0, so add <code>dtoverlay=disable-bt</code> to free the PL011 UART from Bluetooth.':'UART0 links to the ESP32; add <code>dtoverlay=disable-bt</code> so it runs on the stable PL011 UART.'} Spare GPIO22–26 are left free for expansion.`;
+  $('#i2cTable').innerHTML='<tr><th>Address</th><th>Device</th><th>Note</th></tr>'+i2cMap(id).map(r=>`<tr><td><b>${r[0]}</b></td><td>${r[1]}</td><td>${r[2]}</td></tr>`).join('');
+  $('#espTable').innerHTML='<tr><th>Pin</th><th>Function</th><th>Dir</th><th>Bus</th><th>Design note</th></tr>'+espPins(id).map(r=>`<tr><td><b>${r[0]}</b></td><td>${r[1]}</td><td>${r[2]}</td><td><span class="bus"><i style="background:${BUS[r[3]]||'#888'}"></i>${r[3]}</span></td><td>${r[4]}</td></tr>`).join('');
+  // power budget
+  const P=powerLoads(id);let pt=0,pp=0,i5=0,i5p=0;
+  const rows=P.loads.map(x=>{const [n,rail,v,it,ip]=x;const eff=v<14?0.9:1;const wt=v*it/eff,wp=v*ip/eff;pt+=wt;pp+=wp;if(v===5){i5+=it;i5p+=ip;}
+    return `<tr><td>${n}</td><td>${rail}</td><td>${v} V</td><td>${it.toFixed(2)} A</td><td>${ip.toFixed(2)} A</td><td>${wt.toFixed(1)} W</td><td>${wp.toFixed(1)} W</td></tr>`;}).join('');
+  const wh=14.8*P.ah,usable=wh*0.85,ipk=pp/14.8;
+  $('#powTable').innerHTML='<tr><th>Load</th><th>Rail</th><th>Voltage</th><th>Typical</th><th>Peak</th><th>Typical power</th><th>Peak power</th></tr>'+rows+
+    `<tr><td colspan="5"><b>Total at battery</b> (buck efficiency 90 % applied)</td><td><b>${pt.toFixed(1)} W</b></td><td><b>${pp.toFixed(0)} W</b></td></tr>`;
+  const endur=usable/(pt-P.solar);
+  $('#powNote').innerHTML=`Battery ${P.ah} Ah × 14.8 V = ${wh.toFixed(0)} Wh, ${usable.toFixed(0)} Wh usable at 85 % depth of discharge → <b>${(usable/pt).toFixed(1)} h</b> at typical load${P.solar?`, <b>${(pt-P.solar)>1.5?endur.toFixed(1)+' h':'energy-neutral in daylight'}</b> with ${P.solar} W average daytime solar`:''}. `+
+    `5 V rail: ${i5.toFixed(2)} A typical / ${i5p.toFixed(2)} A peak on a 5 A buck — <span class="${i5p<4?'st-ok':'st-warn'}">${i5p<4?'OK, >20 % headroom':'check headroom'}</span>. `+
+    `Worst-case simultaneous peak ≈ ${ipk.toFixed(0)} A vs ${P.fuse} A main fuse — <span class="${ipk<P.fuse?'st-ok':'st-bad'}">${ipk<P.fuse?'within rating':'exceeds rating: firmware must cap combined thruster current'}</span>.`;
+  $('#harnTable').innerHTML='<tr><th>ID</th><th>Run</th><th>Connector / penetration</th><th>Conductors</th><th>Gauge</th><th>Protection</th></tr>'+harness(id).map(r=>`<tr><td><b>${r[0]}</b></td><td>${r[1]}</td><td>${r[2]}</td><td>${r[3]}</td><td>${r[4]}</td><td>${r[5]}</td></tr>`).join('');
+  $('#protList').innerHTML=protection(id).map(x=>`<li>${x}</li>`).join('');
+  $('#seqList').innerHTML=sequence(id).map(x=>`<li>${x}</li>`).join('');
+}
+
+let wireSel='asv';
+function renderWiring(){
+  const {B,L}=wiringFor(wireSel);const W=1220;const CX=[60,370,690,970],CW=[210,220,230,230];
+  const ends={};L.forEach((l,i)=>{const A=B.find(b=>b.k===l.a),Bb=B.find(b=>b.k===l.b);const same=A.col===Bb.col;const sa=same?'r':(A.col<Bb.col?'r':'l'),sb=same?'r':(A.col<Bb.col?'l':'r');l.same=same;
+    (ends[l.a+sa]=ends[l.a+sa]||[]).push(i);(ends[l.b+sb]=ends[l.b+sb]||[]).push(i);l.sa=sa;l.sb=sb;});
+  const colY=[60,60,60,60];
+  B.forEach(b=>{const n=Math.max((ends[b.k+'r']||[]).length,(ends[b.k+'l']||[]).length);b.h=Math.max(56,n*26+18);b.x=CX[b.col];b.w=CW[b.col];b.y=colY[b.col];colY[b.col]+=b.h+(b.col===1?60:18);});
+  const H=Math.max(...colY)+20;
+  function port(bk,side,i){const b=B.find(x=>x.k===bk);const arr=ends[bk+side];const idx=arr.indexOf(i);return{x:side==='r'?b.x+b.w:b.x,y:b.y+(idx+1)*b.h/(arr.length+1)};}
+  let s=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Wiring diagram">`;
+  ['Power','Controllers','Sensors','Actuators and comms'].forEach((t,i)=>{s+=`<text x="${CX[i]}" y="34" font-size="15" font-weight="600" fill="currentColor" opacity=".6">${t}</text>`;});
+  const ink=cssVar('--ink'),panel=cssVar('--panel2'),line=cssVar('--line'),muted=cssVar('--muted');
+  L.forEach((l,i)=>{if(!busOn[l.bus])return;const a=port(l.a,l.sa,i),b=port(l.b,l.sb,i);const dx=Math.max(40,Math.abs(b.x-a.x)*0.45)*(l.sa==='r'?1:-1);
+    const col=BUS[l.bus];s+=`<path d="M${a.x} ${a.y} C${l.same?a.x+58:a.x+dx} ${a.y} ${l.same?b.x+58:b.x-dx} ${b.y} ${b.x} ${b.y}" stroke="${col}" stroke-width="${l.bus==='POWER'?3:2}" fill="none" ${l.ref?'':'stroke-dasharray="6 4"'} opacity=".95"/>`;
+    s+=`<circle cx="${a.x}" cy="${a.y}" r="3.2" fill="${col}"/><circle cx="${b.x}" cy="${b.y}" r="3.2" fill="${col}"/>`;
+    const tx=l.sa==='r'?a.x+6:a.x-6;s+=`<text x="${tx}" y="${a.y-5}" font-size="11" fill="${ink}" text-anchor="${l.sa==='r'?'start':'end'}"><tspan font-weight="600" fill="${col}">${l.bus}</tspan> ${esc(l.pins)}</text>`;});
+  B.forEach(b=>{const ctl=b.col===1;s+=`<rect x="${b.x}" y="${b.y}" width="${b.w}" height="${b.h}" rx="8" fill="${ctl?'#0d7f86':panel}" stroke="${ctl?'#0d7f86':line}" stroke-width="1.5"/>`;
+    s+=`<text x="${b.x+b.w/2}" y="${b.y+b.h/2-3}" text-anchor="middle" font-size="${ctl?16:13.5}" font-weight="700" fill="${ctl?'#fff':ink}">${esc(b.t)}</text><text x="${b.x+b.w/2}" y="${b.y+b.h/2+14}" text-anchor="middle" font-size="11.5" fill="${ctl?'#d9f3f1':muted}">${esc(b.s)}</text>`;});
+  s+='</svg>';$('#wireSvg').innerHTML=s;$('#wireSvg svg').style.color=ink;
+  const nm=k=>B.find(b=>b.k===k).t;
+  $('#wireTable').innerHTML='<tr><th>From</th><th>To</th><th>Bus</th><th>Pins / signal</th><th>Level</th><th>Status</th></tr>'+L.map(l=>`<tr><td>${esc(nm(l.a))}</td><td>${esc(nm(l.b))}</td><td><span class="bus"><i style="background:${BUS[l.bus]}"></i>${l.bus}</span></td><td>${esc(l.pins)}</td><td>${l.v}</td><td>${l.ref?'<span class="st-ok">Pinout checked (docs)</span>':'<span class="st-warn">Proposed</span>'}</td></tr>`).join('');
+  const nref=L.filter(l=>l.ref).length;$('#wireStatus').textContent=`${L.length} connections — ${nref} pinout-checked against documentation, ${L.length-nref} proposed, 0 bench-validated.`;
+  renderWiringDetail();
+}
+function renderBusFilter(){$('#busFilter').innerHTML=Object.keys(BUS).filter(k=>k!=='ADC').map(k=>`<label><input type="checkbox" data-bus="${k}" ${busOn[k]?'checked':''}><span class="bus"><i style="background:${BUS[k]}"></i>${k==='GPIO'?'GPIO / ADC':k}</span></label>`).join('')+'<span class="bus" style="margin-left:6px"><i style="background:repeating-linear-gradient(90deg,var(--muted) 0 5px,transparent 5px 8px)"></i>dashed = proposed</span>';}
+
+const DOCS=[
+ ['arch','Project architecture',`<p>Marine-X is a heterogeneous fleet: one catamaran <b>autonomous surface vehicle (ASV)</b> acts as a mobile gateway and mother ship for three torpedo-form <b>autonomous underwater vehicles (AUVs)</b>. Each AUV carries a different payload so the fleet surveys the water column and seabed in parallel.</p>
+<pre>Shore station ──(LoRa 433 MHz / LTE)── ASV ──(acoustic, ~200 bit/s)──┬── AUV 1  T + salinity profiling
+   web dashboard                    GPS · SST · relay        ├── AUV 2  dissolved oxygen layers
+                                    docking cradle           └── AUV 3  sonar bathymetry</pre>
+<p>Responsibilities are layered: the shore station sets missions and receives data; the ASV holds the GPS reference, schedules acoustic slots, monitors health and relays telemetry; AUVs execute their survey autonomously and continue safely if the acoustic link drops (pre-loaded waypoints, battery-reserve return logic).</p>`],
+ ['mech','Mechanical design',`<h4>ASV</h4><p>Twin Ø220 mm HDPE demi-hulls, 1.47 m long on 0.84 m centres, joined by an aluminium deck on four struts. The wide stance gives high transverse stability for solar panel, mast and the single-bay AUV cradle mounted between the hulls. Two stern thrusters provide differential steering. Electronics live in an IP67 enclosure; the battery box sits low and separate.</p>
+<h4>AUV</h4><p>1.26 m long, Ø150 mm modular body: free-flooding nose and sensor bay, acrylic electronics housing with aluminium end caps, aluminium battery housing, free-flooding rear section, tail cone, ducted main thruster, cruciform servo fins and two small vertical thrusters for depth hold at low speed. Payload rails in the front bay accept mission-specific sensors.</p>
+<p class="callout"><b>Status:</b> geometry is conceptual. Hull scantlings, pressure-housing wall thickness (40 m ≈ 4.0 bar gauge — see the Engineering analysis panel), ballast and trim, buoyancy/trim and hydrodynamics require calculation, FEA and pressure/tank testing before build.</p>`],
+ ['elec','Electronics components',`<p>Every robot uses the same split architecture: a Raspberry Pi 4B for high-level autonomy and an ESP32 for deterministic I/O. This keeps time-critical PWM and failsafes off the Linux scheduler and lets the ESP32 hold thrusters safe if the Pi stalls (heartbeat watchdog over UART/USB).</p><p>Shared parts across the fleet (Pi, ESP32, BNO055, MS5837, ESCs, 4S packs) simplify spares and firmware. See the Electronics tab for the full list.</p>`],
+ ['wire','Wiring connections',`<p>Sensors share the Pi’s I²C-1 bus (GPIO2/3) with fixed, non-conflicting addresses: BNO055 0x28, MS5837 0x76, EZO-EC 0x64, EZO-DO 0x61. DS18B20 uses the 1-Wire overlay on GPIO4. The Pi’s UART0 (GPIO14/15) links to the ESP32 UART2 (GPIO16/17) on the AUVs and to the GPS on the ASV. The ESP32 drives ESCs and servos with LEDC PWM and uses VSPI (GPIO23/19/18/5) for the SD logger or the LoRa radio.</p><p>Power: battery → fused PDB → 14.8 V propulsion bus and 5 V buck logic bus, with a single star ground at the PDB. Battery voltage reaches the ESP32 through a resistor divider to stay under 3.3 V.</p><p class="callout"><b>Status:</b> proposed. Required before hardware: datasheet verification, fuse sizing, reverse-polarity and TVS protection, servo rail separation, I²C pull-up and cable-length checks, and bench testing.</p>`],
+ ['work','Robot working principles',`<h4>ASV</h4><p>Follows a station-keeping loop near the survey centre so slant range to every AUV stays short. Position from GPS, heading from IMU, steering by differential thrust. It polls each AUV in turn on the acoustic channel and forwards frames to shore.</p>
+<h4>AUV 1 — temperature and salinity</h4><p>Saw-tooth (yo-yo) profiling between 3 m and 4 m above the seabed along four transects, producing vertical profiles that capture the thermocline.</p>
+<h4>AUV 2 — dissolved oxygen</h4><p>Constant-depth box patterns at three layers (12, 20 and 26 m, clamped above the seabed) to map horizontal and vertical DO structure.</p>
+<h4>AUV 3 — seabed mapping</h4><p>Lawnmower pattern of ten 180 m lines with 20 m spacing, terrain-following at 5 m altitude using the echosounder; swath width grows with altitude, giving overlap between adjacent lines.</p>
+<h4>Safety behaviours</h4><p>Battery below 12 % triggers autonomous return to the ASV. STOP holds position; START resumes. Commands are queued at the ASV and retried while the acoustic link is lost.</p>`],
+ ['soft','Software architecture',`<pre>Raspberry Pi (ROS 2)                       ESP32 (FreeRTOS)
+├─ mission_manager   state machine          ├─ pwm_task      ESC + servo outputs
+├─ nav_ekf           IMU + depth + DVL/GPS  ├─ adc_task      Vbat, current, leak
+├─ guidance          waypoint / terrain     ├─ link_task     UART frames ↔ Pi
+├─ sensor_drivers    I²C / 1-Wire / UART    └─ watchdog      safe thrust on timeout
+├─ ai_monitor        residual z, EWMA, battery prediction
+├─ acoustic_link     TDMA slots, retries
+└─ logger            SD + compressed telemetry</pre>
+<p>This web prototype mirrors that structure in JavaScript: a fixed-step simulator (sub-stepped for speed-up), sensor models with noise and fault injection, detector modules, and a communication layer with distance- and terrain-dependent packet loss.</p>`],
+ ['spec','Sensor specifications',`<div class="scroll"><table class="tbl"><tr><th>Sensor</th><th>Typical part</th><th>Range</th><th>Accuracy / resolution</th><th>Interface</th></tr>
+<tr><td>Depth</td><td>MS5837-30BA</td><td>0–30 bar (≈300 m)</td><td>0.2 mbar ≈ 2 mm</td><td>I²C</td></tr>
+<tr><td>Temperature</td><td>DS18B20</td><td>−55…+125 °C</td><td>±0.5 °C</td><td>1-Wire</td></tr>
+<tr><td>Conductivity / salinity</td><td>Atlas EZO-EC, K1.0</td><td>seawater range</td><td>±2 %</td><td>I²C / UART</td></tr>
+<tr><td>Dissolved oxygen</td><td>Atlas EZO-DO</td><td>0–100 mg/L</td><td>±0.05 mg/L</td><td>I²C / UART</td></tr>
+<tr><td>IMU</td><td>BNO055</td><td>9-DoF</td><td>fused attitude 100 Hz</td><td>I²C</td></tr>
+<tr><td>GPS</td><td>NEO-M8N</td><td>global</td><td>≈2.5 m CEP</td><td>UART</td></tr>
+<tr><td>Sonar</td><td>Ping2 class</td><td>tens of metres</td><td>~0.5 % of range</td><td>UART</td></tr></table></div>
+<p class="note">Typical figures from manufacturer literature for candidate parts; confirm against current datasheets.</p>`],
+ ['res','Simulation results','<div id="docResults"></div>']
+];
+function renderDocs(){
+  $('#docToc').innerHTML=DOCS.map(d=>`<button data-d="${d[0]}">${d[1]}</button>`).join('');
+  $('#docBody').innerHTML=DOCS.map(d=>`<section id="doc-${d[0]}"><h3>${d[1]}</h3>${d[2]}</section>`).join('');
+  $$('#docToc button').forEach(b=>b.onclick=()=>$('#doc-'+b.dataset.d).scrollIntoView({behavior:'smooth',block:'start'}));
+}
+
+/* ================================================================
+   Live UI panels
+================================================================ */
+function buildRobotCards(){
+  $('#simRobots').innerHTML=S.robots.map(r=>`<div class="rcard" style="--rc:${COL[r.id]}" data-id="${r.id}">
+    <div class="rhead"><span class="dot" style="background:${COL[r.id]}"></span><b>${r.name}</b><span class="phase" data-k="ph"></span></div>
+    <div class="rmis">${r.mission}</div>
+    <div class="bat"><span>Battery</span><div class="bar"><i data-k="bb"></i></div><b data-k="bv"></b></div>
+    <div class="row3"><div><small>${r.kind==='asv'?'Position':'Depth'}</small><b data-k="dv"></b></div><div><small>${r.kind==='asv'?'Shore link':'Acoustic link'}</small><b data-k="lv"></b></div><div><small>Progress</small><b data-k="pv"></b></div></div>
+    <div class="btns"><button class="btn sm" data-k="act"></button><button class="btn sm" data-k="fol">Follow</button></div></div>`).join('');
+  S.robots.forEach(r=>{const c=$(`.rcard[data-id="${r.id}"]`);$('[data-k="act"]',c).onclick=()=>{sendCmd(r);updateUI();};$('[data-k="fol"]',c).onclick=()=>followRobot(r);});
+}
+function batCol(b){return b<20?'var(--bad)':b<40?'var(--warn)':'var(--ok)';}
+function updateRobotCards(){
+  S.robots.forEach(r=>{const c=$(`.rcard[data-id="${r.id}"]`);if(!c)return;const st=statusOf(r);const q=k=>$(`[data-k="${k}"]`,c);
+    q('ph').textContent=st[0];q('ph').className='phase '+st[1];
+    q('bb').style.width=r.battery.toFixed(0)+'%';q('bb').style.background=batCol(r.battery);q('bv').textContent=r.battery.toFixed(0)+'%';
+    if(r.kind==='asv'){const rd=r.readings;q('dv').textContent=rd.lat?`${rd.lat.toFixed(4)}°N`:'—';q('lv').textContent=S.uplink.status;}
+    else{q('dv').textContent=f(-r.pos.y,1)+' m';q('lv').innerHTML=`<span class="${r.link.q>=0.6?'st-ok':r.link.q>=0.15?'st-warn':'st-bad'}">${r.phase==='docked'?'Wired':(r.link.q*100).toFixed(0)+'%'}</span>`;}
+    q('pv').textContent=progressOf(r).toFixed(0)+'%';
+    const b=q('act');
+    if(r.pending){b.textContent=`Sending ${r.pending}…`;b.disabled=true;}
+    else{b.disabled=false;const run=r.kind==='asv'?r.enabled:(r.enabled&&r.phase!=='docked');b.textContent=run?'Stop':(r.phase==='docked'?(r.done?'Restart mission':'Launch'):'Start');b.classList.toggle('primary',!run);}
+  });
+}
+function updateMissionCards(){
+  const box=$('#missionCards');
+  if(!box.children.length){box.innerHTML=S.robots.map(r=>`<div class="statc" style="--rc:${COL[r.id]}" data-id="${r.id}"><h3 style="font-size:19px">${r.name}</h3><p style="margin:2px 0 6px;font-size:13.5px">${r.mission}</p><div class="bar prog"><i data-k="pb"></i></div><div class="kvs" data-k="kv"></div><div class="btns" style="margin-top:8px"><button class="btn sm" data-k="act"></button></div></div>`).join('');
+    S.robots.forEach(r=>{$(`#missionCards [data-id="${r.id}"] [data-k="act"]`).onclick=()=>{sendCmd(r);updateUI();};});}
+  S.robots.forEach(r=>{const c=$(`#missionCards [data-id="${r.id}"]`);const st=statusOf(r);
+    $('[data-k="pb"]',c).style.width=progressOf(r)+'%';
+    let kv=`<span>Status</span><b class="st-${st[1]}">${st[0]}</b><span>Progress</span><b>${progressOf(r).toFixed(0)}%</b>`;
+    if(r.kind==='asv')kv+=`<span>Uplink</span><b>${S.uplink.status}</b><span>Data to shore</span><b>${(S.uplink.bytes/1024).toFixed(1)} kB</b>`;
+    else kv+=`<span>Waypoint</span><b>${Math.min(r.wp,r.path.length)} / ${r.path.length}</b><span>Distance</span><b>${r.dist.toFixed(0)} m</b>`;
+    if(r.id==='auv3')kv+=`<span>Coverage</span><b>${mapStats().cov.toFixed(0)}%</b>`;
+    $('[data-k="kv"]',c).innerHTML=kv;
+    const b=$('[data-k="act"]',c);if(r.pending){b.textContent=`Sending ${r.pending}…`;b.disabled=true;}else{b.disabled=false;const run=r.kind==='asv'?r.enabled:(r.enabled&&r.phase!=='docked');b.textContent=run?'Stop':(r.phase==='docked'?(r.done?'Restart mission':'Launch'):'Start');}
+  });
+}
+const CV={};
+function buildCommView(){
+  const W=900,H=300;const ns='http://www.w3.org/2000/svg';
+  const X=x=>60+(x+110)/220*(W-90),Y=d=>70+d/42*(H-90);
+  let s=`<svg viewBox="0 0 ${W} ${H}" xmlns="${ns}"><defs><linearGradient id="wg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0d4f75"/><stop offset="1" stop-color="#041726"/></linearGradient></defs>`;
+  s+=`<rect x="0" y="${Y(0)}" width="${W}" height="${H-Y(0)}" fill="url(#wg)"/>`;
+  let pts=`M60 ${H}`;for(let x=-110;x<=110;x+=4)pts+=` L${X(x)} ${Y(-seabed(x,0))}`;pts+=` L${X(110)} ${H} Z`;s+=`<path d="${pts}" fill="#5b4d3a" opacity=".85"/>`;
+  for(let d=0;d<=40;d+=10)s+=`<text x="8" y="${Y(d)+4}" font-size="12" fill="#bcd4e4">${d} m</text><line x1="44" x2="${W}" y1="${Y(d)}" y2="${Y(d)}" stroke="#ffffff" stroke-opacity=".07"/>`;
+  s+=`<g><rect x="14" y="14" width="96" height="30" rx="5" fill="#1d3b52"/><text x="62" y="34" text-anchor="middle" font-size="13" fill="#fff" font-weight="600">Shore station</text></g>`;
+  s+=`<path id="cvUp" d="" stroke="#49b9f0" stroke-width="2" stroke-dasharray="6 6" fill="none" class="flow"/>`;
+  S.robots.slice(1).forEach((r,i)=>{s+=`<path id="cvL${i}" d="" stroke-width="2.4" stroke-dasharray="7 5" fill="none" class="flow"/><text id="cvQ${i}" font-size="12" font-weight="600"></text>`;});
+  S.robots.forEach((r,i)=>{s+=`<g id="cvR${i}"><circle r="${r.kind==='asv'?9:7}" fill="${COL[r.id]}" stroke="#fff" stroke-width="1.5"/><text y="-13" text-anchor="middle" font-size="12.5" fill="#fff" font-weight="600">${r.name}</text></g>`;});
+  s+='</svg>';$('#commView').innerHTML=s;CV.X=X;CV.Y=Y;CV.built=true;
+}
+function updateCommView(){
+  if(!CV.built)buildCommView();const X=CV.X,Y=CV.Y;const asv=S.robots[0];
+  const ax=X(asv.pos.x),ay=Y(0)-4;
+  $('#cvUp').setAttribute('d',`M110 30 Q ${(110+ax)/2} 10 ${ax} ${ay-8}`);$('#cvUp').setAttribute('stroke',S.uplink.status==='Online'?'#49b9f0':'#f2b247');
+  S.robots.forEach((r,i)=>{const x=X(r.pos.x),y=r.kind==='asv'?ay:Y(-r.pos.y);$('#cvR'+i).setAttribute('transform',`translate(${x} ${y})`);
+    if(i>0){const L=r.link;const col=L.q>=0.6?'#3fd09a':L.q>=0.15?'#f2b247':'#ff6b6b';const p=$('#cvL'+(i-1));p.setAttribute('d',r.phase==='docked'?'':`M${ax} ${ay+6} L${x} ${y}`);p.setAttribute('stroke',col);
+      const tq=$('#cvQ'+(i-1));tq.setAttribute('x',(ax+x)/2+6);tq.setAttribute('y',(ay+y)/2);tq.setAttribute('fill',col);tq.textContent=r.phase==='docked'?'':`${(L.q*100).toFixed(0)}%${L.shadow?' (shadowed)':''}`;}});
+}
+function updateLinkTable(){
+  const rows=S.robots.slice(1).map(r=>{const L=r.link;const cls=L.q>=0.6?'st-ok':L.q>=0.15?'st-warn':'st-bad';
+    return `<tr><td><span class="dot" style="background:${COL[r.id]}"></span>ASV ↔ ${r.name}</td><td>${L.dist.toFixed(0)} m</td><td class="${cls}">${L.status}</td><td>${(L.q*100).toFixed(0)}%</td><td>${L.lat.toFixed(2)} s</td><td>${L.recv}/${L.sent}</td><td>${L.sent?(L.recv/L.sent*100).toFixed(0):'—'}%</td><td>${(L.bytes/1024).toFixed(2)} kB</td></tr>`;}).join('');
+  const U=S.uplink;
+  $('#linkTable').innerHTML=`<tr><th>Link</th><th>Range</th><th>Status</th><th>Quality</th><th>Latency</th><th>Frames rx/tx</th><th>Delivery</th><th>Data</th></tr>${rows}<tr><td><span class="dot" style="background:${COL.asv}"></span>ASV → shore (LoRa)</td><td>radio</td><td class="${U.status==='Online'?'st-ok':'st-warn'}">${U.status}</td><td>—</td><td>&lt;1 s</td><td>${U.frames}</td><td>${U.frames+U.drops?(U.frames/(U.frames+U.drops)*100).toFixed(0):'—'}%</td><td>${(U.bytes/1024).toFixed(2)} kB</td></tr>`;
+  $('#pktLog').innerHTML=S.pkts.slice(0,40).map(p=>`<div><time>${fmtT(p.t).slice(2)}</time><span class="sev ${p.ok?'info':'warn'}">${p.ok?'OK':'LOSS'}</span><span><b>${p.r}</b> ${esc(p.msg)}</span></div>`).join('')||'<div>No traffic yet.</div>';
+}
+let alertFilter='all';
+function updateAI(){
+  const hc=$('#healthCards');
+  hc.innerHTML=S.robots.map(r=>{const h=healthOf(r);const lbl={ok:'Healthy',warn:'Warning',bad:'Critical'}[h];
+    let pred='—';if(r.drainEwma&&r.drainEwma>0)pred=(r.battery/r.drainEwma/60).toFixed(0)+' min at current draw';else if(r.phase==='docked')pred='charging';else if(r.kind==='asv'&&r.drainEwma!=null&&r.drainEwma<=0)pred='solar positive';
+    const need=r.kind==='auv'&&r.phase==='mission'?remainingDist(r)*0.033+remainingDist(r)/r.speed*0.002:null;
+    return `<div class="statc" style="--rc:${COL[r.id]}"><div class="rhead"><b>${r.name}</b><span class="phase ${h}">${lbl}</span></div>
+    <div class="kvs"><span>Battery</span><b>${r.battery.toFixed(0)}%</b><span>Endurance</span><b>${pred}</b>${need!=null?`<span>Energy to finish</span><b class="${need+10>r.battery?'st-bad':'st-ok'}">${need.toFixed(0)}% + 10% reserve</b>`:''}<span>Mission</span><b>${progressOf(r).toFixed(0)}%</b><span>Alerts (last 45 s)</span><b>${S.alerts.filter(a=>a.rid===r.id&&S.t-a.t<45).length}</b></div></div>`;}).join('');
+  const rows=[];S.robots.forEach(r=>{Object.keys(r.ai).forEach(k=>{const st=r.ai[k];const nm={temp:'Temperature',sal:'Salinity',do:'Dissolved O₂',depth:'Pressure / depth',alt:'Sonar altitude'}[k];const u={temp:'°C',sal:'PSU',do:'mg/L',depth:'m',alt:'m'}[k];
+    const cls=st.status==='Anomaly'?'st-bad':st.status==='Nominal'?'st-ok':'st-warn';
+    rows.push(`<tr><td><span class="dot" style="background:${COL[r.id]}"></span>${r.name}</td><td>${nm}</td><td>${st.last==null?'no return':f(st.last,2)+' '+u}</td><td>${['temp','sal','do'].includes(k)?f(st.z,1):'—'}</td><td class="${cls}">${st.status}</td><td>${st.flags}</td></tr>`);});});
+  $('#streamTable').innerHTML='<tr><th>Robot</th><th>Stream</th><th>Last value</th><th>Residual z</th><th>State</th><th>Flags</th></tr>'+rows.join('');
+  const al=S.alerts.filter(a=>alertFilter==='all'||a.sev===alertFilter);
+  $('#alertLog').innerHTML=al.slice(0,80).map(a=>`<div><time>${fmtT(a.t).slice(2)}</time><span class="sev ${a.sev}">${a.sev==='crit'?'CRIT':'WARN'}</span><span><b>${a.r} · ${esc(a.type)}</b><br><small>${esc(a.msg)}</small></span></div>`).join('')||'<div>No alerts. Inject a fault to test the detectors.</div>';
+}
+function updateMapPanel(){
+  const st=mapStats();$('#mpCov').textContent=st.cov.toFixed(0)+'%';$('#mpBar').style.width=st.cov+'%';$('#mpN').textContent=st.n;
+  const a3=S.robots[3];const lines=Math.min(10,Math.floor(Math.min(a3.wp,a3.path.length)/(a3.path.length/10)));$('#mpL').textContent=(a3.done?10:lines)+' / 10';
+  $('#mpMin').textContent=st.min==null?'—':st.min.toFixed(1)+' m';$('#mpMax').textContent=st.max==null?'—':st.max.toFixed(1)+' m';$('#mpMean').textContent=st.mean==null?'—':st.mean.toFixed(1)+' m';
+  const sd=a3.hist.filter(h=>h.bottom!=null).slice(-10).reverse();
+  $('#soundTable').innerHTML='<tr><th>Time</th><th>Vehicle depth</th><th>Altitude</th><th>Seabed depth</th></tr>'+(sd.map(h=>`<tr><td>${fmtT(h.t).slice(2)}</td><td>${f(h.depth,1)} m</td><td>${f(h.alt,1)} m</td><td><b>${f(h.bottom,2)} m</b></td></tr>`).join('')||'<tr><td colspan="4">Waiting for soundings…</td></tr>');
+  drawMap2D();
+}
+function updateDashboard(){
+  const dc=$('#dashCards');
+  dc.innerHTML=S.robots.map(r=>{const st=statusOf(r),rd=r.readings||{};let kv='';
+    if(r.kind==='asv')kv=`<span>GPS</span><b>${rd.lat?rd.lat.toFixed(5)+'°N':'—'}<br>${rd.lon?rd.lon.toFixed(5)+'°E':''}</b><span>SST</span><b>${f(rd.temp,2)} °C</b><span>Solar</span><b>${f(r.solar,0)} W</b><span>Speed</span><b>${r.enabled?r.speed.toFixed(1):'0.0'} m/s</b>`;
+    else kv=`<span>Depth</span><b>${f(-r.pos.y,1)} m</b><span>Temp</span><b>${f(rd.temp,2)} °C</b>${rd.sal!=null?`<span>Salinity</span><b>${f(rd.sal,2)} PSU</b>`:''}${rd.do!=null?`<span>DO</span><b>${f(rd.do,2)} mg/L</b>`:''}${r.id==='auv3'?`<span>Altitude</span><b>${f(rd.alt,1)} m</b>`:''}<span>Link</span><b class="${r.link.q>=0.6?'st-ok':r.link.q>=0.15?'st-warn':'st-bad'}">${r.link.status}</b>`;
+    return `<div class="statc" style="--rc:${COL[r.id]}"><div class="rhead"><b>${r.name}</b><span class="phase ${st[1]}">${st[0]}</span></div>
+      <div class="bat" style="margin-top:8px"><span class="big">${r.battery.toFixed(0)}%</span><div class="bar"><i style="width:${r.battery}%;background:${batCol(r.battery)}"></i></div></div><div class="kvs">${kv}</div></div>`;}).join('');
+  $('#sensTable').innerHTML='<tr><th>Robot</th><th>Depth m</th><th>Temp °C</th><th>Sal PSU</th><th>DO mg/L</th><th>Alt m</th><th>Batt %</th><th>Health</th></tr>'+S.robots.map(r=>{const rd=r.readings||{};const h=healthOf(r);
+    return `<tr><td><span class="dot" style="background:${COL[r.id]}"></span>${r.name}</td><td>${r.kind==='asv'?'0.0':f(rd.depth,2)}</td><td>${f(rd.temp,2)}</td><td>${f(rd.sal,2)}</td><td>${f(rd.do,2)}</td><td>${f(rd.alt,1)}</td><td>${r.battery.toFixed(0)}</td><td class="st-${h}">${{ok:'OK',warn:'Warn',bad:'Critical'}[h]}</td></tr>`;}).join('');
+  $('#dashProg').innerHTML=S.robots.map(r=>`<div class="bat" style="margin:6px 0"><span style="width:56px"><span class="dot" style="background:${COL[r.id]}"></span>${r.name}</span><div class="bar prog"><i style="width:${progressOf(r)}%"></i></div><b style="width:40px;text-align:right">${progressOf(r).toFixed(0)}%</b><small style="width:110px">${r.kind==='asv'?'uplink '+S.uplink.status:'link '+(r.link.q*100).toFixed(0)+'%'}</small></div>`).join('')+`<p class="note">Seabed coverage ${mapStats().cov.toFixed(0)}% · ${(S.uplink.bytes/1024).toFixed(1)} kB delivered to shore</p>`;
+  $('#eventLog').innerHTML=S.events.slice(0,50).map(e=>`<div><time>${fmtT(e.t).slice(2)}</time><span class="sev ${e.sev}">${e.sev==='crit'?'CRIT':e.sev==='warn'?'WARN':'INFO'}</span><span><b>${e.r}</b> ${esc(e.msg)}</span></div>`).join('');
+  if(!$('#kDepth').innerHTML){$('#kDepth').innerHTML=keysHTML(S.robots.slice(1));$('#kTemp').innerHTML=keysHTML(S.robots);$('#kBatt').innerHTML=keysHTML(S.robots);}
+  if(chartsDirty){drawCharts();chartsDirty=false;}
+}
+function updateDocResults(){
+  const el=$('#docResults');if(!el)return;const st=mapStats();const A=S.robots;
+  const tot=A.slice(1).reduce((s,r)=>s+r.link.sent,0),ok=A.slice(1).reduce((s,r)=>s+r.link.recv,0);
+  el.innerHTML=`<p>Live figures from the current run (${fmtT(S.t)} simulated). All values are <b>simulated</b>, not field measurements.</p>
+  <div class="scroll"><table class="tbl"><tr><th>Robot</th><th>Distance travelled</th><th>Battery used</th><th>Mission progress</th><th>Samples logged</th><th>AI flags</th></tr>
+  ${A.map(r=>`<tr><td><span class="dot" style="background:${COL[r.id]}"></span>${r.name}</td><td>${r.dist.toFixed(0)} m</td><td>${Math.max(0,100-r.battery).toFixed(0)}%</td><td>${progressOf(r).toFixed(0)}%</td><td>${r.hist.length}</td><td>${Object.values(r.ai).reduce((s,x)=>s+(x.flags||0),0)}</td></tr>`).join('')}</table></div>
+  <p>Acoustic telemetry delivery: <b>${tot?(ok/tot*100).toFixed(0):'—'}%</b> (${ok}/${tot} frames). Data relayed to shore: <b>${(S.uplink.bytes/1024).toFixed(1)} kB</b>. Seabed coverage: <b>${st.cov.toFixed(0)}%</b> from ${st.n} sonar pings; measured depth range ${st.min==null?'—':st.min.toFixed(1)}–${st.max==null?'—':st.max.toFixed(1)} m. Alerts raised: <b>${S.alerts.length}</b>.</p>
+  <p class="note">Expected behaviour to check: telemetry delivery drops as AUVs move to the survey corners and behind the ridge; injected faults are flagged within one to three samples; AUV 3 coverage approaches ~95 % when its lawnmower pattern completes.</p>`;
+}
+function updateUI(){
+  $('#clock').textContent=fmtT(S.t);
+  updateRobotCards();
+  if(active==='comms'){updateMissionCards();updateCommView();updateLinkTable();}
+  if(active==='ai')updateAI();
+  if(active==='map')updateMapPanel();
+  if(active==='dashboard')updateDashboard();
+  if(active==='docs')updateDocResults();
+}
+
+/* ================================================================
+   Routing & controls
+================================================================ */
+let active='sim';const VIEWS=['sim','mech','electronics','wiring','comms','ai','map','dashboard','docs'];
+function route(){
+  const h=(location.hash||'').replace('#','');active=VIEWS.includes(h)?h:'sim';
+  $$('.view').forEach(v=>v.classList.toggle('act',v.id==='v-'+active));
+  $$('#tabs a').forEach(a=>a.classList.toggle('act',a.dataset.v===active));
+  requestAnimationFrame(()=>{
+    if(active==='sim'&&!SIM.ready)initSim();
+    if(active==='mech'&&!MECH.ready)initMech();
+    if(active==='map'&&!MAPV.ready)initMap();
+    if(active==='wiring')renderWiring();
+    chartsDirty=true;updateUI();
+  });
+}
+function bind(){
+  $('#btnPlay').onclick=()=>{S.playing=!S.playing;$('#btnPlay').textContent=S.playing?'Pause':'Play';$('#btnPlay').setAttribute('aria-label',S.playing?'Pause simulation':'Play simulation');};
+  $('#btnReset').onclick=()=>{simTimers.length=0;initState();buildRobotCards();$('#missionCards').innerHTML='';updateUI();};
+  $('#selSpeed').onchange=e=>S.speed=+e.target.value;
+  $$('[data-cam]').forEach(b=>b.onclick=()=>setCam(b.dataset.cam));
+  $$('#layers input').forEach(i=>i.onchange=()=>SIM.layers[i.dataset.l]=i.checked);
+  $$('#mechModel button').forEach(b=>b.onclick=()=>loadModel(b.dataset.m));
+  $('#explode').oninput=e=>MECH.target=+e.target.value;
+  $('#mSection').onchange=e=>{MECH.section=e.target.checked;applySection();};$('#mLabels').onchange=e=>MECH.labels=e.target.checked;$('#mDims').onchange=e=>MECH.dims=e.target.checked;$('#mCut').onchange=e=>{MECH.cut=e.target.checked;applyCut();};
+  $('#mechFit').onclick=()=>{if(MECH.cur)MECH.cur.group.rotation.y=0;fitMech();};
+  $('#mechSpin').onclick=()=>{MECH.spin=!MECH.spin;$('#mechSpin').classList.toggle('on',MECH.spin);};
+  $$('#elecFilter button').forEach(b=>b.onclick=()=>{$$('#elecFilter button').forEach(x=>x.classList.toggle('on',x===b));renderElec(b.dataset.f);});
+  $$('#wireRobot button').forEach(b=>b.onclick=()=>{$$('#wireRobot button').forEach(x=>x.classList.toggle('on',x===b));wireSel=b.dataset.w;renderWiring();});
+  $('#busFilter').addEventListener('change',e=>{const k=e.target.dataset.bus;if(!k)return;busOn[k]=e.target.checked;if(k==='GPIO')busOn.ADC=e.target.checked;renderWiring();});
+  $$('#alertFilter button').forEach(b=>b.onclick=()=>{$$('#alertFilter button').forEach(x=>x.classList.toggle('on',x===b));alertFilter=b.dataset.a;updateAI();});
+  $$('#mapEx button').forEach(b=>b.onclick=()=>{$$('#mapEx button').forEach(x=>x.classList.toggle('on',x===b));MAPV.ex=+b.dataset.x;});
+  $('#mapWire').onchange=e=>{if(MAPV.ready)MAPV.mesh.material.wireframe=e.target.checked;};
+  const fr=$('#fiRobot');fr.innerHTML=DEFS.map(d=>`<option value="${d.id}">${d.name}</option>`).join('');
+  const fillF=()=>{$('#fiType').innerHTML=FAULTS_FOR[fr.value].map(k=>`<option value="${k}">${FAULTS[k]}</option>`).join('');};fr.onchange=fillF;fillF();
+  $('#fiGo').onclick=()=>{const r=S.robots.find(x=>x.id===fr.value);injectFault(r,$('#fiType').value);updateUI();};
+  window.addEventListener('hashchange',route);
+  window.addEventListener('resize',()=>{chartsDirty=true;});
+}
+
+/* ================================================================
+   Boot
+================================================================ */
+initState();buildRobotCards();renderElec('all');renderBusFilter();renderDocs();bind();route();
+let last=performance.now(),uiAcc=0;
+function frame(now){
+  const rdt=Math.min(0.1,Math.max(0,(now-last)/1000));last=now;
+  if(S.playing){const dt=rdt*S.speed;const n=Math.max(1,Math.ceil(dt/1));for(let i=0;i<n;i++){S.t+=dt/n;step(dt/n);runSimTimers();}}
+  try{
+    if(active==='sim'&&SIM.ready)renderSim(rdt);
+    else if(active==='mech'&&MECH.ready)renderMech(rdt);
+    else if(active==='map'&&MAPV.ready)renderMap();
+  }catch(err){console.error(err);}
+  uiAcc+=rdt;if(uiAcc>0.25){uiAcc=0;updateUI();}
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+window.__marinex={S,step,route};
+})();
+</script>
+</body>
+</html>
